@@ -1,83 +1,95 @@
 import { useState } from "react";
-// 1. Importamos o pacote do Google que acabamos de instalar
 import { GoogleGenerativeAI } from "@google/generative-ai";
-
 import { Header } from "./components/Header";
-import { AerodromeCard } from "./components/AerodromeCard";
-import { RouteCard } from "./components/RouteCard";
-import { NotamBoard } from "./components/NotamBoard";
-import { mockFlightData } from "./data/mockFlightData";
 import { QuickStats } from "./components/QuickStats";
+import { RouteCard } from "./components/RouteCard";
+import { NotamSection } from "./components/NotamSection";
+import { LocationCard } from "./components/LocationCard"; // <-- Novo componente aqui!
 
 function App() {
   const [origem, setOrigem] = useState("SBRP");
   const [destino, setDestino] = useState("SBRJ");
-  const [horarioSaida, setHorarioSaida] = useState("14:00"); // Começa com 14:00 por padrão
+  const [horarioSaida, setHorarioSaida] = useState("14:00");
   const [briefingData, setBriefingData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false); // Para sabermos quando a IA está pensando
+  const [isLoading, setIsLoading] = useState(false);
 
-  // 2. Transformamos nossa função em "async" (assíncrona) porque a resposta da nuvem leva alguns segundos
   const handleGerarVisaoGeral = async () => {
+    if (isLoading) return;
+
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-      // Prompt mais rígido para não vir lixo no texto
-      const prompt = `
-        Analise a rota de ${origem} para ${destino}. 
-        O piloto pretende DECOLAR às ${horarioSaida}.
-        
-        Retorne um JSON com esta estrutura:
-        {
-          "originBriefing": "...",
-          "destBriefing": "...",
-          "enRouteWeather": "...",
-          "flightInfo": {
-            "time": "1h 20min",
-            "distance": "185 NM",
-            "eta": "HORA ESTIMADA DE POUSO AQUI"
+      // Super Prompt atualizado com estrutura rígida
+      const prompt = `Atue como um despachante operacional de voo. Analise a rota exata de ${origem} para ${destino} saindo às ${horarioSaida}.
+      NÃO invente outros aeroportos. Use estritamente os códigos ICAO fornecidos.
+      Retorne APENAS um JSON puro (sem markdown) com esta estrutura exata:
+      {
+        "originData": {
+          "airportName": "Nome Real do Aeroporto de ${origem}",
+          "rule": "VFR ou IFR",
+          "temp": "Ex: 28ºC",
+          "wind": "Ex: 120º / 10KT",
+          "runwayDetails": {
+             "ident": "Ex: 18/36 - Asfalto",
+             "length": "Ex: 2100x45m",
+             "lda": "Ex: LDA 2000m",
+             "slope": "Ex: Declividade 0.5% / Ventos alinhados",
+             "ils": "Ex: ILS CAT I (ou 'Apenas VFR/RNAV')"
+             "lights": "Ex: L14, L21, L26 (Noturno Ativo)"
           },
-          "sun": {
-            "origin": { "sunrise": "06:00", "sunset": "18:30" },
-            "destination": { "sunrise": "06:05", "sunset": "18:20" }
+          "briefing": "Briefing meteorológico detalhado de decolagem em ${origem}."
+        },
+        "destData": {
+          "airportName": "Nome Real do Aeroporto de ${destino}",
+          "rule": "VFR ou IFR",
+          "temp": "Ex: 22ºC",
+          "wind": "Ex: 190º / 15KT",
+          "runwayDetails": {
+             "ident": "Ex: 02R/20L - Asfalto",
+             "length": "Ex: 1323x42m",
+             "lda": "Ex: LDA 1323m",
+             "slope": "Ex: Declividade plana",
+             "ils": "Ex: ILS CAT I e II"
+             "lights": "Ex: L14, L21, L26 (Noturno Ativo)"
           },
-          "safetyAlert": "Diga se o pouso será antes ou depois do Sunset de ${destino}",
-          "coords": { "origin": [lat, long], "destination": [lat, long] },
-          "notams": { "origin": "...", "destination": "..." }
-        }
-      `;
+          "briefing": "Briefing meteorológico de pouso em ${destino}."
+        },
+        "enRouteWeather": "Resumo de SIGWX e GAMET na rota.",
+        "sigmet": "Avisos de perigo severo ou 'Nenhum aviso ativo'.",
+        "windsAltitude": "Direção e velocidade dos ventos em altitude.",
+        "flightInfo": { "time": "Ex: 1h 20m", "distance": "Ex: 185 NM", "eta": "Horário de pouso estimado" },
+        "sun": {
+          "origin": { "sunrise": "hh:mm", "sunset": "hh:mm" },
+          "destination": { "sunrise": "hh:mm", "sunset": "hh:mm" }
+        },
+        "safetyAlert": "Alerta sobre pouso antes/depois do pôr do sol.",
+        "coords": { "origin": [lat, lng], "destination": [lat, lng] },
+        "notams": { "origin": "Principais NOTAMs de ${origem}", "destination": "Principais NOTAMs de ${destino}" }
+      }`;
 
       const result = await model.generateContent(prompt);
-      let textoResposta = result.response.text();
-
-      console.log("Texto bruto da IA:", textoResposta); // Isso vai nos mostrar o que chegou!
-
-      // Limpeza extra: remove qualquer coisa que não seja o JSON
-      const jsonPuro = textoResposta.substring(
-        textoResposta.indexOf("{"),
-        textoResposta.lastIndexOf("}") + 1,
-      );
-
-      const dadosIA = JSON.parse(jsonPuro);
-
-      setBriefingData(dadosIA);
-      setIsLoading(false);
+      const texto = result.response
+        .text()
+        .replace(/```json|```/g, "")
+        .trim();
+      setBriefingData(JSON.parse(texto));
     } catch (error) {
-      // Agora o console vai nos dizer EXATAMENTE o que quebrou
-      console.error("ERRO DETALHADO:", error);
-      alert(
-        "🚨 Erro ao processar o briefing. Verifique o log no console (F12) agora.",
-      );
+      console.error("Erro na decolagem:", error);
+      if (error.message.includes("429")) {
+        alert("⚠️ Torre (Google) ocupada. Tente novamente em 1 minuto.");
+      } else {
+        alert("🚨 Ocorreu um erro ao processar os dados da rota.");
+      }
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 p-4">
-      {/* 4. Passamos a memória e as funções como "Props" para o Header usar */}
-
+    <div className="min-h-screen bg-slate-900 p-4 font-sans text-slate-200">
       <Header
         origem={origem}
         setOrigem={setOrigem}
@@ -91,47 +103,38 @@ function App() {
 
       <QuickStats data={briefingData} loading={isLoading} />
 
-      <main className="max-w-7xl mx-auto mt-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Card de Origem */}
-          <AerodromeCard
-            title="Origem"
-            icon="🛫"
-            icaoCode={origem}
-            // Se tivermos briefing da IA, usamos ele. Senão, usamos o mock.
-            data={{
-              ...mockFlightData.origin,
-              briefing: briefingData?.originBriefing,
-              sun: briefingData?.sun, // Passando os horários do sol
-            }}
+      <main className="max-w-7xl mx-auto">
+        {/* Grade Principal com 3 Colunas: Origem -> Rota -> Destino */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Coluna 1: Origem */}
+          <LocationCard
+            type="Origem"
+            icao={origem}
+            data={briefingData?.originData}
+            loading={isLoading}
           />
 
-          {/* Card de Rota (passando o tempo de voo e clima da IA) */}
+          {/* Coluna 2: Rota Central */}
           <RouteCard
-            time={briefingData?.flightTime}
-            weather={briefingData?.enRouteWeather}
-            loading={isLoading}
-            coords={briefingData?.coords?.origin} // Começamos focando na origem
+            time={briefingData?.flightInfo?.time}
             coordsOrigin={briefingData?.coords?.origin}
             coordsDest={briefingData?.coords?.destination}
+            loading={isLoading}
+            data={briefingData}
           />
 
-          {/* Card de Destino */}
-          <AerodromeCard
-            title="Destino"
-            icon="🛬"
-            icaoCode={destino}
-            data={{
-              ...mockFlightData.destination,
-              briefing: briefingData
-                ? briefingData.destBriefing
-                : mockFlightData.destination.briefing,
-            }}
+          {/* Coluna 3: Destino */}
+          <LocationCard
+            type="Destino"
+            icao={destino}
+            data={briefingData?.destData}
+            loading={isLoading}
           />
         </div>
-        {/* O painel de NOTAMs agora recebe os dados reais da IA! */}
-        <NotamBoard
-          data={briefingData}
+
+        {/* Seção Inferior de NOTAMs */}
+        <NotamSection
+          data={briefingData?.notams}
           loading={isLoading}
           origem={origem}
           destino={destino}

@@ -1,64 +1,57 @@
 import {
   MapContainer,
   TileLayer,
+  Polyline,
   Marker,
   Popup,
-  Polyline,
   useMap,
 } from "react-leaflet";
-import { useEffect } from "react";
 import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+import { useEffect } from "react";
 
-function ChangeView({ bounds }) {
+// Sub-componente para forçar o mapa a focar na rota quando os dados mudarem
+function RecenterMap({ origin, destination }) {
   const map = useMap();
-
   useEffect(() => {
-    if (bounds) {
-      map.fitBounds(bounds, { padding: [50, 50] });
+    if (origin && destination) {
+      map.fitBounds([origin, destination], { padding: [50, 50] });
     }
-  }, [bounds, map]); // <--- Adicione o 'map' aqui dentro!
-
+  }, [origin, destination, map]);
   return null;
 }
 
-export function FlightMap({ coordsOrigin, coordsDest }) {
-  const defaultPos = [-15.78, -47.92];
-
-  // Criamos os limites do mapa para mostrar os dois aeroportos ao mesmo tempo
-  const bounds = coordsOrigin && coordsDest ? [coordsOrigin, coordsDest] : null;
+export function FlightMap({ origin, destination }) {
+  if (!origin || !destination) return null;
 
   return (
-    <div className="h-full w-full rounded-xl overflow-hidden">
-      <MapContainer center={defaultPos} zoom={4} className="h-full w-full">
-        {bounds && <ChangeView bounds={bounds} />}
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          className="map-tiles"
-        />
+    <MapContainer
+      center={origin}
+      zoom={13}
+      style={{ height: "100%", width: "100%" }}
+      zoomControl={false}
+    >
+      {/* TileLayer em modo Light (Branco/Cinza claro) */}
+      <TileLayer
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+      />
 
-        {coordsOrigin && (
-          <Marker position={coordsOrigin}>
-            <Popup>Origem: {coordsOrigin.join(", ")}</Popup>
-          </Marker>
-        )}
+      <RecenterMap origin={origin} destination={destination} />
 
-        {coordsDest && (
-          <Marker position={coordsDest}>
-            <Popup>Destino: {coordsDest.join(", ")}</Popup>
-          </Marker>
-        )}
+      <Polyline
+        positions={[origin, destination]}
+        color="#22d3ee"
+        weight={3}
+        dashArray="10, 10"
+      />
 
-        {/* A LINHA DE ROTA */}
-        {coordsOrigin && coordsDest && (
-          <Polyline
-            positions={[coordsOrigin, coordsDest]}
-            color="#06b6d4" // Cor Cyan do seu tema
-            weight={3}
-            dashArray="10, 10" // Linha tracejada estilo aviação
-          />
-        )}
-      </MapContainer>
-    </div>
+      <Marker position={origin}>
+        <Popup>Origem</Popup>
+      </Marker>
+
+      <Marker position={destination}>
+        <Popup>Destino</Popup>
+      </Marker>
+    </MapContainer>
   );
 }
