@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* Filtro para deixar o mapa do OpenStreetMap com visual Dark */
+.leaflet-container {
+  background: #fdfdfd !important;
+}
