@@ -16,11 +16,63 @@ function App() {
   const handleGerarVisaoGeral = async () => {
     if (isLoading) return;
 
+    if (origem === "TESTE") {
+      setBriefingData({
+        originData: {
+          airportName: "SÃO PAULO / CONGONHAS",
+          rule: "VFR",
+          temp: "22°C",
+          wind: "120/10kt",
+          runwayDetails: {
+            ident: "17R/35L",
+            length: "1940m",
+            lda: "1600m",
+            slope: "plana",
+            ils: "CAT I",
+            lights: "L14",
+          },
+          briefing: "Condições ideais. Pista limpa.",
+        },
+        destData: {
+          airportName: "RIO DE JANEIRO / SANTOS DUMONT",
+          rule: "VFR",
+          temp: "25°C",
+          wind: "190/05kt",
+          runwayDetails: {
+            ident: "02R/20L",
+            length: "1323m",
+            lda: "1200m",
+            slope: "plana",
+            ils: "N/A",
+            lights: "L21",
+          },
+          briefing: "Aproximação visual confirmada.",
+        },
+        enRouteWeather: "Céu limpo em toda a rota, visibilidade > 10km.",
+        sigmet: "Nenhum fenômeno reportado.",
+        windsAltitude: "100° com 15kt no FL050",
+        flightInfo: { time: "1h 05min", distance: "190nm", eta: "16:30Z" },
+        sun: {
+          origin: { sunrise: "06:10", sunset: "18:05" },
+          destination: { sunrise: "06:05", sunset: "18:00" },
+        },
+        safetyAlert: "Aviso: Demonstração Offline",
+        coords: { origin: [-23.62, -46.65], destination: [-22.91, -43.16] },
+        notams: { origin: "Nenhum", destination: "Pista com pintura apagada" },
+      });
+
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      // Tente usar o nome técnico completo dele
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+      });
 
       // Super Prompt atualizado com estrutura rígida
       const prompt = `Atue como um despachante operacional de voo. Analise a rota exata de ${origem} para ${destino} saindo às ${horarioSaida}.
