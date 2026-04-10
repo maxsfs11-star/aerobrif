@@ -1,197 +1,434 @@
-import { useState } from "react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { Header } from "./components/Header";
-import { QuickStats } from "./components/QuickStats";
-import { RouteCard } from "./components/RouteCard";
-import { NotamSection } from "./components/NotamSection";
-import { LocationCard } from "./components/LocationCard"; // <-- Novo componente aqui!
+import React, { useState, useEffect } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+} from "react-leaflet";
+import L from "leaflet";
+import "./App.css";
+
+// Cria o ícone do radar (o CSS .blip foi atualizado para fundo claro)
+const blipIcon = new L.DivIcon({
+  html: '<div class="blip"></div>',
+  className: "radar-blip-container",
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
+// 📍 Coordenadas de GPS dos principais aeroportos para traçar a rota
+const gpsAeroportos = {
+  SBSP: { coords: [-23.6261, -46.6564], fuso: -3 }, // Congonhas (SP)
+  SBGR: { coords: [-23.4356, -46.4731], fuso: -3 }, // Guarulhos (SP)
+  SBGL: { coords: [-22.8089, -43.2436], fuso: -3 }, // Galeão (RJ)
+  SBBR: { coords: [-15.8692, -47.9208], fuso: -3 }, // Brasília (DF)
+  SBCY: { coords: [-15.6529, -56.1167], fuso: -4 }, // Cuiabá (MT) - Fuso Diferente
+  SBEG: { coords: [-3.0358, -60.0463], fuso: -4 }, // Manaus (AM) - Fuso Diferente
+  SBRB: { coords: [-9.8683, -67.898], fuso: -5 }, // Rio Branco (AC) - Fuso Diferente
+};
 
 function App() {
-  const [origem, setOrigem] = useState("SBRP");
-  const [destino, setDestino] = useState("SBRJ");
-  const [horarioSaida, setHorarioSaida] = useState("14:00");
-  const [briefingData, setBriefingData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [origem, setOrigem] = useState("SBSP");
+  const [destino, setDestino] = useState("SBGL");
+  const [radar, setRadar] = useState([]);
+  const [loadingRota, setLoadingRota] = useState(false);
 
-  const handleGerarVisaoGeral = async () => {
-    if (isLoading) return;
+  const [dadosOrigem, setDadosOrigem] = useState(null);
+  const [dadosDestino, setDadosDestino] = useState(null);
 
-    if (origem === "TESTE") {
-      setBriefingData({
-        originData: {
-          airportName: "SÃO PAULO / CONGONHAS",
-          rule: "VFR",
-          temp: "22°C",
-          wind: "120/10kt",
-          runwayDetails: {
-            ident: "17R/35L",
-            length: "1940m",
-            lda: "1600m",
-            slope: "plana",
-            ils: "CAT I",
-            lights: "L14",
-          },
-          briefing: "Condições ideais. Pista limpa.",
-        },
-        destData: {
-          airportName: "RIO DE JANEIRO / SANTOS DUMONT",
-          rule: "VFR",
-          temp: "25°C",
-          wind: "190/05kt",
-          runwayDetails: {
-            ident: "02R/20L",
-            length: "1323m",
-            lda: "1200m",
-            slope: "plana",
-            ils: "N/A",
-            lights: "L21",
-          },
-          briefing: "Aproximação visual confirmada.",
-        },
-        enRouteWeather: "Céu limpo em toda a rota, visibilidade > 10km.",
-        sigmet: "Nenhum fenômeno reportado.",
-        windsAltitude: "100° com 15kt no FL050",
-        flightInfo: { time: "1h 05min", distance: "190nm", eta: "16:30Z" },
-        sun: {
-          origin: { sunrise: "06:10", sunset: "18:05" },
-          destination: { sunrise: "06:05", sunset: "18:00" },
-        },
-        safetyAlert: "Aviso: Demonstração Offline",
-        coords: { origin: [-23.62, -46.65], destination: [-22.91, -43.16] },
-        notams: { origin: "Nenhum", destination: "Pista com pintura apagada" },
-      });
-
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      const genAI = new GoogleGenerativeAI(apiKey);
-      // Tente usar o nome técnico completo dele
-      const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
-      });
-
-      // Super Prompt atualizado com estrutura rígida
-      const prompt = `Atue como um despachante operacional de voo. Analise a rota exata de ${origem} para ${destino} saindo às ${horarioSaida}.
-      NÃO invente outros aeroportos. Use estritamente os códigos ICAO fornecidos.
-      Retorne APENAS um JSON puro (sem markdown) com esta estrutura exata:
-      {
-        "originData": {
-          "airportName": "Nome Real do Aeroporto de ${origem}",
-          "rule": "VFR ou IFR",
-          "temp": "Ex: 28ºC",
-          "wind": "Ex: 120º / 10KT",
-          "runwayDetails": {
-             "ident": "Ex: 18/36 - Asfalto",
-             "length": "Ex: 2100x45m",
-             "lda": "Ex: LDA 2000m",
-             "slope": "Ex: Declividade 0.5% / Ventos alinhados",
-             "ils": "Ex: ILS CAT I (ou 'Apenas VFR/RNAV')"
-             "lights": "Ex: L14, L21, L26 (Noturno Ativo)"
-          },
-          "briefing": "Briefing meteorológico detalhado de decolagem em ${origem}."
-        },
-        "destData": {
-          "airportName": "Nome Real do Aeroporto de ${destino}",
-          "rule": "VFR ou IFR",
-          "temp": "Ex: 22ºC",
-          "wind": "Ex: 190º / 15KT",
-          "runwayDetails": {
-             "ident": "Ex: 02R/20L - Asfalto",
-             "length": "Ex: 1323x42m",
-             "lda": "Ex: LDA 1323m",
-             "slope": "Ex: Declividade plana",
-             "ils": "Ex: ILS CAT I e II"
-             "lights": "Ex: L14, L21, L26 (Noturno Ativo)"
-          },
-          "briefing": "Briefing meteorológico de pouso em ${destino}."
-        },
-        "enRouteWeather": "Resumo de SIGWX e GAMET na rota.",
-        "sigmet": "Avisos de perigo severo ou 'Nenhum aviso ativo'.",
-        "windsAltitude": "Direção e velocidade dos ventos em altitude.",
-        "flightInfo": { "time": "Ex: 1h 20m", "distance": "Ex: 185 NM", "eta": "Horário de pouso estimado" },
-        "sun": {
-          "origin": { "sunrise": "hh:mm", "sunset": "hh:mm" },
-          "destination": { "sunrise": "hh:mm", "sunset": "hh:mm" }
-        },
-        "safetyAlert": "Alerta sobre pouso antes/depois do pôr do sol.",
-        "coords": { "origin": [lat, lng], "destination": [lat, lng] },
-        "notams": { "origin": "Principais NOTAMs de ${origem}", "destination": "Principais NOTAMs de ${destino}" }
-      }`;
-
-      const result = await model.generateContent(prompt);
-      const texto = result.response
-        .text()
-        .replace(/```json|```/g, "")
-        .trim();
-      setBriefingData(JSON.parse(texto));
-    } catch (error) {
-      console.error("Erro na decolagem:", error);
-      if (error.message.includes("429")) {
-        alert("⚠️ Torre (Google) ocupada. Tente novamente em 1 minuto.");
-      } else {
-        alert("🚨 Ocorreu um erro ao processar os dados da rota.");
+  // RADAR AO VIVO COM BIPE
+  useEffect(() => {
+    const tocarBipe = () => {
+      try {
+        const audioCtx = new (
+          window.AudioContext || window.webkitAudioContext
+        )();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime); // Volume sutil
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.08);
+      } catch {
+        /* Ignora se o usuário não interagiu ainda */
       }
+    };
+
+    const buscarRadar = () => {
+      fetch("http://localhost:3001/api/radar")
+        .then((res) => res.json())
+        .then((data) => {
+          // 🛡️ TRAVA DE SEGURANÇA: Só atualiza se o que vier for uma lista (Array)
+          if (Array.isArray(data)) {
+            setRadar(data);
+            tocarBipe();
+          } else {
+            setRadar([]); // Se vier erro do servidor, limpa o radar mas não quebra o site
+          }
+        })
+        .catch(() => {
+          console.log("Radar offline");
+          setRadar([]);
+        });
+    };
+
+    buscarRadar();
+    const interval = setInterval(buscarRadar, 10000); // Atualiza a cada 10s
+    return () => clearInterval(interval);
+  }, []);
+
+  // FUNÇÃO DE CARREGAR ROTA DO SERVIDOR
+  const carregarDadosDaRota = async () => {
+    if (!origem || !destino) return;
+    setLoadingRota(true);
+
+    try {
+      const resOrigem = await fetch(
+        `http://localhost:3001/api/aerodromo/${origem}`,
+      );
+      const dataOrigem = await resOrigem.json();
+      setDadosOrigem(dataOrigem);
+
+      const resDestino = await fetch(
+        `http://localhost:3001/api/aerodromo/${destino}`,
+      );
+      const dataDestino = await resDestino.json();
+      setDadosDestino(dataDestino);
+    } catch (error) {
+      console.error("Erro ao carregar rota:", error);
     } finally {
-      setIsLoading(false);
+      setLoadingRota(false);
     }
   };
 
+  // Função para pegar a hora local baseada no fuso do aeroporto
+  const getHoraLocal = (icao) => {
+    const aeroporto = gpsAeroportos[icao];
+    if (!aeroporto) return "--:--";
+
+    // Pega a hora UTC atual
+    const agoraUTC = new Date();
+    const utc = agoraUTC.getTime() + agoraUTC.getTimezoneOffset() * 60000;
+
+    // Aplica o fuso do aeroporto
+    const horaLocal = new Date(utc + 3600000 * aeroporto.fuso);
+
+    return horaLocal.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-slate-900 p-4 font-sans text-slate-200">
-      <Header
-        origem={origem}
-        setOrigem={setOrigem}
-        destino={destino}
-        setDestino={setDestino}
-        horarioSaida={horarioSaida}
-        setHorarioSaida={setHorarioSaida}
-        onBuscar={handleGerarVisaoGeral}
-        loading={isLoading}
-      />
+    <div className="dashboard-container">
+      {/* 🗺️ O MAPA DE FUNDO INTERATIVO (TEMA CLARO) */}
+      {/* 🗺️ O MAPA DE FUNDO INTERATIVO (TEMA CLARO + CLIMA) */}
+      <div className="mapa-fundo">
+        <MapContainer
+          center={[-23.5505, -46.6333]}
+          zoom={7}
+          style={{ height: "100%", width: "100%" }}
+          zoomControl={false}
+        >
+          {/* 1. O Mapa Base Claro (CartoDB Positron) */}
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
 
-      <QuickStats data={briefingData} loading={isLoading} />
-
-      <main className="max-w-7xl mx-auto">
-        {/* Grade Principal com 3 Colunas: Origem -> Rota -> Destino */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Coluna 1: Origem */}
-          <LocationCard
-            type="Origem"
-            icao={origem}
-            data={briefingData?.originData}
-            loading={isLoading}
+          {/* 2. 🌩️ CAMADA DE CHUVA AO VIVO (OpenWeatherMap) */}
+          {/* ⚠️ Lembre-se de trocar 'SUA_CHAVE_AQUI' pela sua API Key de verdade depois */}
+          <TileLayer
+            url="https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=e6fd4ff8d4378e1a25f023b7a22f2f97"
+            opacity={1.3}
           />
 
-          {/* Coluna 2: Rota Central */}
-          <RouteCard
-            time={briefingData?.flightInfo?.time}
-            coordsOrigin={briefingData?.coords?.origin}
-            coordsDest={briefingData?.coords?.destination}
-            loading={isLoading}
-            data={briefingData}
-          />
+          {gpsAeroportos[origem] && gpsAeroportos[destino] && (
+            <Polyline
+              positions={[
+                gpsAeroportos[origem].coords,
+                gpsAeroportos[destino].coords,
+              ]}
+              color="var(--neon-blue)"
+              weight={4}
+              dashArray="10, 10"
+              opacity={0.8}
+            />
+          )}
 
-          {/* Coluna 3: Destino */}
-          <LocationCard
-            type="Destino"
-            icao={destino}
-            data={briefingData?.destData}
-            loading={isLoading}
-          />
+          {/* VARREDURA DO RADAR REAL */}
+          {radar.map((aviao, index) => {
+            if (!aviao.lat || !aviao.lng) return null;
+
+            return (
+              <Marker
+                key={index}
+                position={[aviao.lat, aviao.lng]}
+                icon={blipIcon}
+              >
+                <Popup>
+                  <strong
+                    style={{ color: "var(--neon-green)", fontSize: "1.1rem" }}
+                  >
+                    Voo: {aviao.id}
+                  </strong>
+                  <br />
+                  🌍 <b>Registro:</b> {aviao.origem}
+                  <br />
+                  📏 <b>Altitude:</b> {aviao.altitude}
+                  <br />
+                  💨 <b>Velocidade:</b> {aviao.velocidade}
+                  <br />
+                  🧭 <b>Proa:</b> {aviao.angulo}°<br />
+                  🚦 <b>Status:</b> {aviao.status}
+                </Popup>
+              </Marker>
+            );
+          })}
+        </MapContainer>
+
+        {/* 📊 LEGENDA DE INTENSIDADE DA CHUVA ADICIONADA AQUI */}
+        <div className="legenda-clima">
+          <div className="legenda-titulo">🌩️ INTENSIDADE (mm/h)</div>
+          <div className="legenda-item">
+            <div className="cor-box" style={{ background: "#87CEFA" }}></div>{" "}
+            Chuva Leve (0.1 - 2)
+          </div>
+          <div className="legenda-item">
+            <div className="cor-box" style={{ background: "#32CD32" }}></div>{" "}
+            Moderada (2 - 10)
+          </div>
+          <div className="legenda-item">
+            <div className="cor-box" style={{ background: "#FFD700" }}></div>{" "}
+            Chuva Forte (10 - 50)
+          </div>
+          <div className="legenda-item">
+            <div className="cor-box" style={{ background: "#FF4500" }}></div>{" "}
+            Toró / Severa (&gt; 50)
+          </div>
+          <div className="legenda-item">
+            <div className="cor-box" style={{ background: "#9400D3" }}></div>{" "}
+            Granizo Extremo
+          </div>
+        </div>
+      </div>
+
+      {/* 🎛️ CONTROLES SUPERIORES (TEMA CLARO) */}
+      <header className="header-hud">
+        <h1>
+          AERO<span>BRIF</span>
+        </h1>
+        <input
+          value={origem}
+          onChange={(e) => setOrigem(e.target.value.toUpperCase())}
+          placeholder="ORIGEM"
+        />
+        <span style={{ color: "var(--primary-blue)" }}>✈️</span>
+        <input
+          value={destino}
+          onChange={(e) => setDestino(e.target.value.toUpperCase())}
+          placeholder="DESTINO"
+        />
+        <button onClick={carregarDadosDaRota}>
+          {loadingRota ? "CARREGANDO..." : "CARREGAR ROTA"}
+        </button>
+      </header>
+
+      {/* 🛫 PAINEL ESQUERDO: ORIGEM COMPLETA */}
+      <aside className="painel-lateral esquerda">
+        <h2
+          style={{
+            color: "var(--neon-blue)",
+            borderBottom: "1px solid var(--glass-border)",
+            paddingBottom: "10px",
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>🛫 ORIGEM: {origem || "---"}</span>
+          <span style={{ fontSize: "0.9rem", color: "#fff" }}>
+            🕒 LOCAL: {getHoraLocal(origem)}
+          </span>
+        </h2>
+
+        <div className="sessao-dados">
+          <h4>METAR & TAF (Meteorologia Oficial)</h4>
+          <p>
+            <span className="dado-destaque">METAR:</span>{" "}
+            {dadosOrigem ? dadosOrigem.metar : "Aguardando rota..."}
+          </p>
+          <p style={{ marginTop: "5px" }}>
+            <span className="dado-destaque">TAF:</span>{" "}
+            {dadosOrigem ? dadosOrigem.taf : "Aguardando rota..."}
+          </p>
         </div>
 
-        {/* Seção Inferior de NOTAMs */}
-        <NotamSection
-          data={briefingData?.notams}
-          loading={isLoading}
-          origem={origem}
-          destino={destino}
-        />
-      </main>
+        <div className="sessao-dados">
+          <h4>CONDIÇÕES LOCAIS</h4>
+          <p>
+            🌬️ <strong>Vento:</strong> {dadosOrigem ? dadosOrigem.vento : "---"}
+          </p>
+          <p>
+            🌡️ <strong>Clima:</strong> {dadosOrigem ? dadosOrigem.clima : "---"}
+          </p>
+          <p>
+            ⚖️ <strong>Pressão:</strong>{" "}
+            {dadosOrigem ? dadosOrigem.pressao : "---"}
+          </p>
+
+          {/* CORREÇÃO DO SOL (Tratando objeto) */}
+          <p>
+            ☀️ <strong>Sol:</strong>{" "}
+            {dadosOrigem
+              ? dadosOrigem.sol.nascer
+                ? `Nascer: ${dadosOrigem.sol.nascer} | Ocaso: ${dadosOrigem.sol.ocaso}`
+                : dadosOrigem.sol
+              : "---"}
+          </p>
+        </div>
+
+        <div className="sessao-dados">
+          <h4>DADOS DA PISTA</h4>
+          <p>🛣️ {dadosOrigem ? dadosOrigem.pista : "Aguardando rota..."}</p>
+        </div>
+
+        <div className="sessao-dados">
+          <h4>AVISOS (NOTAM)</h4>
+          <p>{dadosOrigem ? dadosOrigem.notam : "Aguardando rota..."}</p>
+          {dadosOrigem && dadosOrigem.passaros && (
+            <div className="alerta-fauna">{dadosOrigem.passaros}</div>
+          )}
+        </div>
+
+        <div
+          className="sessao-dados"
+          style={{ background: "transparent", border: "none", padding: 0 }}
+        >
+          <h4>📦 CARTAS PARA DOWNLOAD (AISWEB)</h4>
+          <div className="cartas-grid">
+            {dadosOrigem?.cartas?.map((c) => (
+              <a href="#" className="btn-carta" key={c}>
+                {c}
+              </a>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      {/* 🛬 PAINEL DIREITO: DESTINO COMPLETO */}
+      <aside className="painel-lateral direita">
+        <h2
+          style={{
+            color: "var(--neon-green)",
+            borderBottom: "1px solid var(--glass-border)",
+            paddingBottom: "10px",
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>🛬 DESTINO: {destino || "---"}</span>
+          <span style={{ fontSize: "0.9rem", color: "#fff" }}>
+            🕒 LOCAL: {getHoraLocal(destino)}
+          </span>
+        </h2>
+
+        <div
+          className="sessao-dados"
+          style={{ borderLeftColor: "var(--primary-green)" }}
+        >
+          <h4 style={{ color: "var(--primary-green)" }}>METAR & TAF</h4>
+          <p>
+            <span className="dado-destaque">METAR:</span>{" "}
+            {dadosDestino ? dadosDestino.metar : "Aguardando rota..."}
+          </p>
+          <p style={{ marginTop: "5px" }}>
+            <span className="dado-destaque">TAF:</span>{" "}
+            {dadosDestino ? dadosDestino.taf : "Aguardando rota..."}
+          </p>
+        </div>
+
+        <div
+          className="sessao-dados"
+          style={{ borderLeftColor: "var(--primary-green)" }}
+        >
+          <h4 style={{ color: "var(--primary-green)" }}>CONDIÇÕES LOCAIS</h4>
+          <p>
+            🌬️ <strong>Vento:</strong>{" "}
+            {dadosDestino ? dadosDestino.vento : "---"}
+          </p>
+          <p>
+            🌡️ <strong>Clima:</strong>{" "}
+            {dadosDestino ? dadosDestino.clima : "---"}
+          </p>
+          <p>
+            ⚖️ <strong>Pressão:</strong>{" "}
+            {dadosDestino ? dadosDestino.pressao : "---"}
+          </p>
+
+          {/* CORREÇÃO DO SOL (Tratando objeto) */}
+          <p>
+            ☀️ <strong>Sol:</strong>{" "}
+            {dadosDestino
+              ? dadosDestino.sol.nascer
+                ? `Nascer: ${dadosDestino.sol.nascer} | Ocaso: ${dadosDestino.sol.ocaso}`
+                : dadosDestino.sol
+              : "---"}
+          </p>
+        </div>
+
+        <div
+          className="sessao-dados"
+          style={{ borderLeftColor: "var(--primary-green)" }}
+        >
+          <h4 style={{ color: "var(--primary-green)" }}>DADOS DA PISTA</h4>
+          <p>🛣️ {dadosDestino ? dadosDestino.pista : "Aguardando rota..."}</p>
+        </div>
+
+        <div
+          className="sessao-dados"
+          style={{ borderLeftColor: "var(--primary-green)" }}
+        >
+          <h4 style={{ color: "var(--primary-green)" }}>AVISOS (NOTAM)</h4>
+          <p>{dadosDestino ? dadosDestino.notam : "Aguardando rota..."}</p>
+          {dadosDestino && dadosDestino.passaros && (
+            <div className="alerta-fauna">{dadosDestino.passaros}</div>
+          )}
+        </div>
+
+        <div
+          className="sessao-dados"
+          style={{ background: "transparent", border: "none", padding: 0 }}
+        >
+          <h4 style={{ color: "var(--primary-green)" }}>
+            📦 DOWNLOAD DE CARTAS
+          </h4>
+          <div className="cartas-grid">
+            {dadosDestino?.cartas?.map((c) => (
+              <a
+                href="#"
+                className="btn-carta"
+                style={{
+                  borderColor: "var(--primary-green)",
+                  color: "var(--primary-green)",
+                }}
+                key={c}
+              >
+                {c}
+              </a>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      {/* ⏰ BARRA INFERIOR DE SISTEMA */}
+      <footer className="barra-inferior">
+        <span>UTC: {new Date().toISOString().substring(11, 16)}Z</span>
+        <span>|</span>
+        <span>AEROBRIF CLARITY V2.0</span>
+        <span>|</span>
+        <span>RADAR REALTIME: ONLINE</span>
+      </footer>
     </div>
   );
 }
