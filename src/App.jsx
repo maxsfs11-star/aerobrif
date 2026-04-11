@@ -7,428 +7,660 @@ import {
   Polyline,
 } from "react-leaflet";
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import "./App.css";
 
-// Cria o ícone do radar (o CSS .blip foi atualizado para fundo claro)
-const blipIcon = new L.DivIcon({
-  html: '<div class="blip"></div>',
-  className: "radar-blip-container",
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
+// 🟢 ÍCONE DE RADAR PISCANDO
+const blipIcon = L.divIcon({
+  className: "custom-blip",
+  html: "<div class='radar-blip'></div>",
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
 });
 
-// 📍 Coordenadas de GPS dos principais aeroportos para traçar a rota
+// 📍 BANCO DE DADOS COMPLETO DE AEROPORTOS
 const gpsAeroportos = {
-  SBSP: { coords: [-23.6261, -46.6564], fuso: -3 }, // Congonhas (SP)
-  SBGR: { coords: [-23.4356, -46.4731], fuso: -3 }, // Guarulhos (SP)
-  SBGL: { coords: [-22.8089, -43.2436], fuso: -3 }, // Galeão (RJ)
-  SBBR: { coords: [-15.8692, -47.9208], fuso: -3 }, // Brasília (DF)
-  SBCY: { coords: [-15.6529, -56.1167], fuso: -4 }, // Cuiabá (MT) - Fuso Diferente
-  SBEG: { coords: [-3.0358, -60.0463], fuso: -4 }, // Manaus (AM) - Fuso Diferente
-  SBRB: { coords: [-9.8683, -67.898], fuso: -5 }, // Rio Branco (AC) - Fuso Diferente
+  SBSP: {
+    coords: [-23.6261, -46.6564],
+    fuso: -3,
+    pista: 170,
+    elevacao: 2631,
+    comprimento: 1940,
+    freqTorre: "118.10",
+    freqSolo: "121.90",
+  },
+  SBGR: {
+    coords: [-23.4356, -46.4731],
+    fuso: -3,
+    pista: 90,
+    elevacao: 2459,
+    comprimento: 3700,
+    freqTorre: "118.40",
+    freqSolo: "121.70",
+  },
+  SBGL: {
+    coords: [-22.8089, -43.2436],
+    fuso: -3,
+    pista: 100,
+    elevacao: 28,
+    comprimento: 4000,
+    freqTorre: "118.00",
+    freqSolo: "121.65",
+  },
+  SBRJ: {
+    coords: [-22.9105, -43.1626],
+    fuso: -3,
+    pista: 20,
+    elevacao: 10,
+    comprimento: 1323,
+    freqTorre: "118.00",
+    freqSolo: "121.00",
+  },
+  SBBR: {
+    coords: [-15.8692, -47.9208],
+    fuso: -3,
+    pista: 110,
+    elevacao: 3497,
+    comprimento: 3300,
+    freqTorre: "118.10",
+    freqSolo: "121.70",
+  },
+  SBCY: {
+    coords: [-15.6529, -56.1167],
+    fuso: -4,
+    pista: 170,
+    elevacao: 617,
+    comprimento: 2300,
+    freqTorre: "118.30",
+    freqSolo: "121.90",
+  },
+  SBEG: {
+    coords: [-3.0358, -60.0463],
+    fuso: -4,
+    pista: 110,
+    elevacao: 264,
+    comprimento: 2700,
+    freqTorre: "118.30",
+    freqSolo: "121.90",
+  },
+  SBRB: {
+    coords: [-9.8683, -67.898],
+    fuso: -5,
+    pista: 60,
+    elevacao: 633,
+    comprimento: 2158,
+    freqTorre: "118.70",
+    freqSolo: "121.90",
+  },
+  SBPA: {
+    coords: [-29.9939, -51.1711],
+    fuso: -3,
+    pista: 110,
+    elevacao: 11,
+    comprimento: 2280,
+    freqTorre: "118.10",
+    freqSolo: "121.90",
+  },
+  SBFZ: {
+    coords: [-3.7763, -38.5326],
+    fuso: -3,
+    pista: 130,
+    elevacao: 82,
+    comprimento: 2545,
+    freqTorre: "120.10",
+    freqSolo: "121.70",
+  },
+  SBCF: {
+    coords: [-19.6244, -43.9719],
+    fuso: -3,
+    pista: 160,
+    elevacao: 2715,
+    comprimento: 3000,
+    freqTorre: "118.15",
+    freqSolo: "121.80",
+  },
 };
 
+// 🧮 FUNÇÕES MATEMÁTICAS DA ROTA
+const calcularDistanciaNM = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 0.539957;
+};
+
+const calcularTempoVoo = (distanciaNM) => {
+  const tempoHoras = distanciaNM / 450;
+  const horas = Math.floor(tempoHoras);
+  const minutos = Math.round((tempoHoras - horas) * 60);
+  return `${horas}h ${minutos < 10 ? "0" : ""}${minutos}m`;
+};
+
+// ==========================================
+// 🚀 INÍCIO DO APLICATIVO PRINCIPAL
+// ==========================================
 function App() {
-  const [origem, setOrigem] = useState("SBSP");
-  const [destino, setDestino] = useState("SBGL");
+  const [origemInput, setOrigemInput] = useState("SBSP");
+  const [destinoInput, setDestinoInput] = useState("SBRJ");
+  const [origemAtiva, setOrigemAtiva] = useState("SBSP");
+  const [destinoAtivo, setDestinoAtivo] = useState("SBRJ");
+
   const [radar, setRadar] = useState([]);
-  const [loadingRota, setLoadingRota] = useState(false);
+  const [climaOrigem, setClimaOrigem] = useState(null);
+  const [climaDestino, setClimaDestino] = useState(null);
+  const [camadaChuva, setCamadaChuva] = useState(null);
 
-  const [dadosOrigem, setDadosOrigem] = useState(null);
-  const [dadosDestino, setDadosDestino] = useState(null);
-
-  // RADAR AO VIVO COM BIPE
-  useEffect(() => {
-    const tocarBipe = () => {
-      try {
-        const audioCtx = new (
-          window.AudioContext || window.webkitAudioContext
-        )();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.04, audioCtx.currentTime); // Volume sutil
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.08);
-      } catch {
-        /* Ignora se o usuário não interagiu ainda */
-      }
-    };
-
-    const buscarRadar = () => {
-      fetch("http://localhost:3001/api/radar")
-        .then((res) => res.json())
-        .then((data) => {
-          // 🛡️ TRAVA DE SEGURANÇA: Só atualiza se o que vier for uma lista (Array)
-          if (Array.isArray(data)) {
-            setRadar(data);
-            tocarBipe();
-          } else {
-            setRadar([]); // Se vier erro do servidor, limpa o radar mas não quebra o site
-          }
-        })
-        .catch(() => {
-          console.log("Radar offline");
-          setRadar([]);
-        });
-    };
-
-    buscarRadar();
-    const interval = setInterval(buscarRadar, 10000); // Atualiza a cada 10s
-    return () => clearInterval(interval);
-  }, []);
-
-  // FUNÇÃO DE CARREGAR ROTA DO SERVIDOR
-  const carregarDadosDaRota = async () => {
-    if (!origem || !destino) return;
-    setLoadingRota(true);
-
-    try {
-      const resOrigem = await fetch(
-        `http://localhost:3001/api/aerodromo/${origem}`,
-      );
-      const dataOrigem = await resOrigem.json();
-      setDadosOrigem(dataOrigem);
-
-      const resDestino = await fetch(
-        `http://localhost:3001/api/aerodromo/${destino}`,
-      );
-      const dataDestino = await resDestino.json();
-      setDadosDestino(dataDestino);
-    } catch (error) {
-      console.error("Erro ao carregar rota:", error);
-    } finally {
-      setLoadingRota(false);
-    }
-  };
-
-  // Função para pegar a hora local baseada no fuso do aeroporto
   const getHoraLocal = (icao) => {
-    const aeroporto = gpsAeroportos[icao];
-    if (!aeroporto) return "--:--";
-
-    // Pega a hora UTC atual
-    const agoraUTC = new Date();
-    const utc = agoraUTC.getTime() + agoraUTC.getTimezoneOffset() * 60000;
-
-    // Aplica o fuso do aeroporto
-    const horaLocal = new Date(utc + 3600000 * aeroporto.fuso);
-
-    return horaLocal.toLocaleTimeString("pt-BR", {
+    const aero = gpsAeroportos[icao];
+    if (!aero) return "--:--";
+    const agora = new Date();
+    const utc = agora.getTime() + agora.getTimezoneOffset() * 60000;
+    return new Date(utc + 3600000 * aero.fuso).toLocaleTimeString("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
     });
   };
 
+  const handleCarregarRota = () => {
+    setOrigemAtiva(origemInput.toUpperCase());
+    setDestinoAtivo(destinoInput.toUpperCase());
+  };
+
+  // ==========================================
+  // MOTOR 1: 📡 RASTREIO DE AVIÕES (OPENSKY)
+  // ==========================================
+  useEffect(() => {
+    const buscarRadar = () => {
+      fetch("http://localhost:3001/api/radar")
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setRadar(data);
+        })
+        .catch((err) => console.log("Aguardando Torre...", err));
+    };
+    buscarRadar();
+    const timer = setInterval(buscarRadar, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // ==========================================
+  // MOTOR 2: ☁️ RASTREIO DE CLIMA (NOAA)
+  // ==========================================
+  useEffect(() => {
+    const buscarClima = async (icao, setClima) => {
+      try {
+        const res = await fetch(`http://localhost:3001/api/clima/${icao}`);
+        const data = await res.json();
+        if (!data.error) setClima(data);
+      } catch (err) {
+        console.error(`Erro NOAA para ${icao}`, err);
+      }
+    };
+
+    if (gpsAeroportos[origemAtiva]) buscarClima(origemAtiva, setClimaOrigem);
+    if (gpsAeroportos[destinoAtivo]) buscarClima(destinoAtivo, setClimaDestino);
+  }, [origemAtiva, destinoAtivo]);
+
+  // ==========================================
+  // MOTOR 3: 🌧️ RASTREIO DE CHUVA (RAINVIEWER)
+  // ==========================================
+  useEffect(() => {
+    const buscarRadarChuva = async () => {
+      try {
+        const res = await fetch(
+          "https://api.rainviewer.com/public/weather-maps.json",
+        );
+        const data = await res.json();
+        const ultimoRadar = data.radar.past[data.radar.past.length - 1];
+        const urlRealTime = `${data.host}${ultimoRadar.path}/256/{z}/{x}/{y}/2/1_1.png`;
+        setCamadaChuva(urlRealTime);
+      } catch (err) {
+        console.error("Falha ao buscar radar de chuva", err);
+      }
+    };
+
+    buscarRadarChuva();
+    const timerChuva = setInterval(buscarRadarChuva, 600000); // Atualiza a cada 10 min
+    return () => clearInterval(timerChuva);
+  }, []);
+
+  // ==========================================
+  // 🧮 CÁLCULOS DE ROTA E VENTO DE TRAVÉS
+  // ==========================================
+  let traves = 0,
+    corAlerta = "#444";
+  let dist = 0,
+    tempo = "--h --m";
+
+  if (gpsAeroportos[origemAtiva] && gpsAeroportos[destinoAtivo]) {
+    dist = Math.round(
+      calcularDistanciaNM(
+        gpsAeroportos[origemAtiva].coords[0],
+        gpsAeroportos[origemAtiva].coords[1],
+        gpsAeroportos[destinoAtivo].coords[0],
+        gpsAeroportos[destinoAtivo].coords[1],
+      ),
+    );
+    tempo = calcularTempoVoo(dist);
+
+    const ventoReal =
+      climaDestino?.ventoDir !== "--" ? parseInt(climaDestino?.ventoDir) : 140;
+    const forcaReal =
+      climaDestino?.ventoVel !== "--" ? parseInt(climaDestino?.ventoVel) : 20;
+
+    const diff = Math.abs(ventoReal - gpsAeroportos[destinoAtivo].pista);
+    traves = Math.round(forcaReal * Math.sin((diff * Math.PI) / 180));
+
+    if (traves > 15)
+      corAlerta = "#ff4d4d"; // Vermelho
+    else if (traves > 10) corAlerta = "#FFD700"; // Amarelo
+  }
+
+  // ==========================================
+  // 🖥️ RENDERIZAÇÃO DA TELA (VISUAL)
+  // ==========================================
   return (
-    <div className="dashboard-container">
-      {/* 🗺️ O MAPA DE FUNDO INTERATIVO (TEMA CLARO) */}
-      {/* 🗺️ O MAPA DE FUNDO INTERATIVO (TEMA CLARO + CLIMA) */}
+    <div className="app-container">
+      {/* 🗺️ MAPA DE FUNDO */}
       <div className="mapa-fundo">
         <MapContainer
           center={[-23.5505, -46.6333]}
-          zoom={7}
+          zoom={6}
           style={{ height: "100%", width: "100%" }}
           zoomControl={false}
         >
-          {/* 1. O Mapa Base Claro (CartoDB Positron) */}
+          {/* MAPA BASE CLARO */}
           <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
 
-          {/* 2. 🌩️ CAMADA DE CHUVA AO VIVO (OpenWeatherMap) */}
-          {/* ⚠️ Lembre-se de trocar 'SUA_CHAVE_AQUI' pela sua API Key de verdade depois */}
-          <TileLayer
-            url="https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=e6fd4ff8d4378e1a25f023b7a22f2f97"
-            opacity={1.3}
-          />
+          {/* 🌧️ CAMADA DE CHUVA REAL (RAINVIEWER) */}
+          {camadaChuva && (
+            <TileLayer url={camadaChuva} opacity={0.6} zIndex={10} />
+          )}
 
-          {gpsAeroportos[origem] && gpsAeroportos[destino] && (
+          {/* 📍 LINHA DA ROTA */}
+          {gpsAeroportos[origemAtiva] && gpsAeroportos[destinoAtivo] && (
             <Polyline
               positions={[
-                gpsAeroportos[origem].coords,
-                gpsAeroportos[destino].coords,
+                gpsAeroportos[origemAtiva].coords,
+                gpsAeroportos[destinoAtivo].coords,
               ]}
-              color="var(--neon-blue)"
-              weight={4}
+              color="#00d2ff"
+              weight={3}
               dashArray="10, 10"
-              opacity={0.8}
             />
           )}
 
-          {/* VARREDURA DO RADAR REAL */}
-          {radar.map((aviao, index) => {
-            if (!aviao.lat || !aviao.lng) return null;
-
-            return (
-              <Marker
-                key={index}
-                position={[aviao.lat, aviao.lng]}
-                icon={blipIcon}
-              >
-                <Popup>
-                  <strong
-                    style={{ color: "var(--neon-green)", fontSize: "1.1rem" }}
-                  >
-                    Voo: {aviao.id}
-                  </strong>
-                  <br />
-                  🌍 <b>Registro:</b> {aviao.origem}
-                  <br />
-                  📏 <b>Altitude:</b> {aviao.altitude}
-                  <br />
-                  💨 <b>Velocidade:</b> {aviao.velocidade}
-                  <br />
-                  🧭 <b>Proa:</b> {aviao.angulo}°<br />
-                  🚦 <b>Status:</b> {aviao.status}
-                </Popup>
-              </Marker>
-            );
-          })}
+          {/* ✈️ AVIÕES PISCANDO */}
+          {radar.map((aviao, idx) => (
+            <Marker key={idx} position={[aviao.lat, aviao.lng]} icon={blipIcon}>
+              <Popup>
+                <b>Voo: {aviao.id}</b>
+                <br />
+                Alt: {aviao.altitude} ft
+                <br />
+                Vel: {aviao.velocidade} kt
+              </Popup>
+            </Marker>
+          ))}
         </MapContainer>
-
-        {/* 📊 LEGENDA DE INTENSIDADE DA CHUVA ADICIONADA AQUI */}
-        <div className="legenda-clima">
-          <div className="legenda-titulo">🌩️ INTENSIDADE (mm/h)</div>
-          <div className="legenda-item">
-            <div className="cor-box" style={{ background: "#87CEFA" }}></div>{" "}
-            Chuva Leve (0.1 - 2)
-          </div>
-          <div className="legenda-item">
-            <div className="cor-box" style={{ background: "#32CD32" }}></div>{" "}
-            Moderada (2 - 10)
-          </div>
-          <div className="legenda-item">
-            <div className="cor-box" style={{ background: "#FFD700" }}></div>{" "}
-            Chuva Forte (10 - 50)
-          </div>
-          <div className="legenda-item">
-            <div className="cor-box" style={{ background: "#FF4500" }}></div>{" "}
-            Toró / Severa (&gt; 50)
-          </div>
-          <div className="legenda-item">
-            <div className="cor-box" style={{ background: "#9400D3" }}></div>{" "}
-            Granizo Extremo
-          </div>
-        </div>
       </div>
 
-      {/* 🎛️ CONTROLES SUPERIORES (TEMA CLARO) */}
-      <header className="header-hud">
-        <h1>
-          AERO<span>BRIF</span>
-        </h1>
+      {/* 🧭 HEADER (BARRA SUPERIOR) */}
+      <div className="header-clarity">
+        <div className="logo">AEROBRIF</div>
         <input
-          value={origem}
-          onChange={(e) => setOrigem(e.target.value.toUpperCase())}
-          placeholder="ORIGEM"
+          value={origemInput}
+          onChange={(e) => setOrigemInput(e.target.value.toUpperCase())}
         />
-        <span style={{ color: "var(--primary-blue)" }}>✈️</span>
+        <span style={{ color: "#fff" }}>✈️</span>
         <input
-          value={destino}
-          onChange={(e) => setDestino(e.target.value.toUpperCase())}
-          placeholder="DESTINO"
+          value={destinoInput}
+          onChange={(e) => setDestinoInput(e.target.value.toUpperCase())}
         />
-        <button onClick={carregarDadosDaRota}>
-          {loadingRota ? "CARREGANDO..." : "CARREGAR ROTA"}
-        </button>
-      </header>
+        <button onClick={handleCarregarRota}>CARREGAR ROTA</button>
+      </div>
 
-      {/* 🛫 PAINEL ESQUERDO: ORIGEM COMPLETA */}
-      <aside className="painel-lateral esquerda">
-        <h2
-          style={{
-            color: "var(--neon-blue)",
-            borderBottom: "1px solid var(--glass-border)",
-            paddingBottom: "10px",
-            display: "flex",
-            justifyContent: "space-between",
-          }}
-        >
-          <span>🛫 ORIGEM: {origem || "---"}</span>
-          <span style={{ fontSize: "0.9rem", color: "#fff" }}>
-            🕒 LOCAL: {getHoraLocal(origem)}
-          </span>
-        </h2>
+      {/* 🛫 PAINEL ESQUERDO (ORIGEM) */}
+      <div className="panel-side panel-left">
+        <div className="panel-title">
+          <span>🛫 ORIGEM: {origemAtiva}</span>
+          <span>🕒 LOCAL: {getHoraLocal(origemAtiva)}</span>
+        </div>
 
-        <div className="sessao-dados">
-          <h4>METAR & TAF (Meteorologia Oficial)</h4>
-          <p>
-            <span className="dado-destaque">METAR:</span>{" "}
-            {dadosOrigem ? dadosOrigem.metar : "Aguardando rota..."}
-          </p>
-          <p style={{ marginTop: "5px" }}>
-            <span className="dado-destaque">TAF:</span>{" "}
-            {dadosOrigem ? dadosOrigem.taf : "Aguardando rota..."}
+        <div className="card-clarity">
+          <h4>METAR OFICIAL (NOAA)</h4>
+          <p
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.8rem",
+              color: "#fff",
+            }}
+          >
+            {climaOrigem?.metarCru || "Buscando dados na NOAA..."}
           </p>
         </div>
 
-        <div className="sessao-dados">
+        <div className="card-clarity">
           <h4>CONDIÇÕES LOCAIS</h4>
           <p>
-            🌬️ <strong>Vento:</strong> {dadosOrigem ? dadosOrigem.vento : "---"}
+            🌬️ <b>Vento:</b> {climaOrigem?.ventoDir}° / {climaOrigem?.ventoVel}{" "}
+            kt
           </p>
           <p>
-            🌡️ <strong>Clima:</strong> {dadosOrigem ? dadosOrigem.clima : "---"}
+            🌡️ <b>Temperatura:</b> {climaOrigem?.temperatura}°C
           </p>
           <p>
-            ⚖️ <strong>Pressão:</strong>{" "}
-            {dadosOrigem ? dadosOrigem.pressao : "---"}
+            ⚖️ <b>Pressão (QNH):</b> {climaOrigem?.pressao} hPa
           </p>
-
-          {/* CORREÇÃO DO SOL (Tratando objeto) */}
           <p>
-            ☀️ <strong>Sol:</strong>{" "}
-            {dadosOrigem
-              ? dadosOrigem.sol.nascer
-                ? `Nascer: ${dadosOrigem.sol.nascer} | Ocaso: ${dadosOrigem.sol.ocaso}`
-                : dadosOrigem.sol
-              : "---"}
+            👀 <b>Regra de Voo:</b>{" "}
+            <span
+              style={{
+                color:
+                  climaOrigem?.condicao === "VFR"
+                    ? "var(--neon-green)"
+                    : "#ff4d4d",
+              }}
+            >
+              {climaOrigem?.condicao || "--"}
+            </span>
           </p>
         </div>
 
-        <div className="sessao-dados">
-          <h4>DADOS DA PISTA</h4>
-          <p>🛣️ {dadosOrigem ? dadosOrigem.pista : "Aguardando rota..."}</p>
-        </div>
-
-        <div className="sessao-dados">
-          <h4>AVISOS (NOTAM)</h4>
-          <p>{dadosOrigem ? dadosOrigem.notam : "Aguardando rota..."}</p>
-          {dadosOrigem && dadosOrigem.passaros && (
-            <div className="alerta-fauna">{dadosOrigem.passaros}</div>
-          )}
-        </div>
-
+        {/* 🩻 RAIO-X ORIGEM */}
         <div
-          className="sessao-dados"
-          style={{ background: "transparent", border: "none", padding: 0 }}
+          className="card-clarity"
+          style={{ borderTopColor: "var(--cyan-neon)" }}
         >
-          <h4>📦 CARTAS PARA DOWNLOAD (AISWEB)</h4>
-          <div className="cartas-grid">
-            {dadosOrigem?.cartas?.map((c) => (
-              <a href="#" className="btn-carta" key={c}>
-                {c}
-              </a>
-            ))}
-          </div>
-        </div>
-      </aside>
-
-      {/* 🛬 PAINEL DIREITO: DESTINO COMPLETO */}
-      <aside className="painel-lateral direita">
-        <h2
-          style={{
-            color: "var(--neon-green)",
-            borderBottom: "1px solid var(--glass-border)",
-            paddingBottom: "10px",
-            display: "flex",
-            justifyContent: "space-between",
-          }}
-        >
-          <span>🛬 DESTINO: {destino || "---"}</span>
-          <span style={{ fontSize: "0.9rem", color: "#fff" }}>
-            🕒 LOCAL: {getHoraLocal(destino)}
-          </span>
-        </h2>
-
-        <div
-          className="sessao-dados"
-          style={{ borderLeftColor: "var(--primary-green)" }}
-        >
-          <h4 style={{ color: "var(--primary-green)" }}>METAR & TAF</h4>
-          <p>
-            <span className="dado-destaque">METAR:</span>{" "}
-            {dadosDestino ? dadosDestino.metar : "Aguardando rota..."}
-          </p>
-          <p style={{ marginTop: "5px" }}>
-            <span className="dado-destaque">TAF:</span>{" "}
-            {dadosDestino ? dadosDestino.taf : "Aguardando rota..."}
-          </p>
-        </div>
-
-        <div
-          className="sessao-dados"
-          style={{ borderLeftColor: "var(--primary-green)" }}
-        >
-          <h4 style={{ color: "var(--primary-green)" }}>CONDIÇÕES LOCAIS</h4>
-          <p>
-            🌬️ <strong>Vento:</strong>{" "}
-            {dadosDestino ? dadosDestino.vento : "---"}
-          </p>
-          <p>
-            🌡️ <strong>Clima:</strong>{" "}
-            {dadosDestino ? dadosDestino.clima : "---"}
-          </p>
-          <p>
-            ⚖️ <strong>Pressão:</strong>{" "}
-            {dadosDestino ? dadosDestino.pressao : "---"}
-          </p>
-
-          {/* CORREÇÃO DO SOL (Tratando objeto) */}
-          <p>
-            ☀️ <strong>Sol:</strong>{" "}
-            {dadosDestino
-              ? dadosDestino.sol.nascer
-                ? `Nascer: ${dadosDestino.sol.nascer} | Ocaso: ${dadosDestino.sol.ocaso}`
-                : dadosDestino.sol
-              : "---"}
-          </p>
-        </div>
-
-        <div
-          className="sessao-dados"
-          style={{ borderLeftColor: "var(--primary-green)" }}
-        >
-          <h4 style={{ color: "var(--primary-green)" }}>DADOS DA PISTA</h4>
-          <p>🛣️ {dadosDestino ? dadosDestino.pista : "Aguardando rota..."}</p>
-        </div>
-
-        <div
-          className="sessao-dados"
-          style={{ borderLeftColor: "var(--primary-green)" }}
-        >
-          <h4 style={{ color: "var(--primary-green)" }}>AVISOS (NOTAM)</h4>
-          <p>{dadosDestino ? dadosDestino.notam : "Aguardando rota..."}</p>
-          {dadosDestino && dadosDestino.passaros && (
-            <div className="alerta-fauna">{dadosDestino.passaros}</div>
-          )}
-        </div>
-
-        <div
-          className="sessao-dados"
-          style={{ background: "transparent", border: "none", padding: 0 }}
-        >
-          <h4 style={{ color: "var(--primary-green)" }}>
-            📦 DOWNLOAD DE CARTAS
-          </h4>
-          <div className="cartas-grid">
-            {dadosDestino?.cartas?.map((c) => (
-              <a
-                href="#"
-                className="btn-carta"
+          <h4>Raio-X da Infraestrutura</h4>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "10px" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <p>
+                🏔️ <b>Altitude:</b>
+              </p>
+              <span style={{ color: "var(--cyan-neon)", fontWeight: "bold" }}>
+                {gpsAeroportos[origemAtiva]?.elevacao} ft
+              </span>
+            </div>
+            <div style={{ marginTop: "5px" }}>
+              <p
                 style={{
-                  borderColor: "var(--primary-green)",
-                  color: "var(--primary-green)",
+                  fontSize: "0.75rem",
+                  color: "#aaa",
+                  marginBottom: "5px",
                 }}
-                key={c}
               >
-                {c}
-              </a>
-            ))}
+                COMPRIMENTO DA PISTA:
+              </p>
+              <div
+                style={{
+                  width: "100%",
+                  height: "10px",
+                  background: "#222",
+                  borderRadius: "5px",
+                  position: "relative",
+                  overflow: "hidden",
+                  border: "1px solid #444",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${(gpsAeroportos[origemAtiva]?.comprimento / 4000) * 100}%`,
+                    height: "100%",
+                    background:
+                      gpsAeroportos[origemAtiva]?.comprimento < 1500
+                        ? "#ff4d4d"
+                        : "#00d2ff",
+                    boxShadow: "0 0 10px #00d2ff",
+                  }}
+                ></div>
+              </div>
+              <p
+                style={{
+                  textAlign: "right",
+                  fontSize: "0.8rem",
+                  marginTop: "5px",
+                }}
+              >
+                <b>{gpsAeroportos[origemAtiva]?.comprimento} metros</b>
+              </p>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+                marginTop: "5px",
+                borderTop: "1px solid #333",
+                paddingTop: "10px",
+              }}
+            >
+              <p>
+                🎙️ <b>TWR:</b> {gpsAeroportos[origemAtiva]?.freqTorre}
+              </p>
+              <p>
+                🚜 <b>GND:</b> {gpsAeroportos[origemAtiva]?.freqSolo}
+              </p>
+            </div>
           </div>
         </div>
-      </aside>
 
-      {/* ⏰ BARRA INFERIOR DE SISTEMA */}
-      <footer className="barra-inferior">
-        <span>UTC: {new Date().toISOString().substring(11, 16)}Z</span>
-        <span>|</span>
-        <span>AEROBRIF CLARITY V2.0</span>
-        <span>|</span>
-        <span>RADAR REALTIME: ONLINE</span>
-      </footer>
+        <a
+          href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${origemAtiva}`}
+          target="_blank"
+          rel="noreferrer"
+          className="link-aisweb"
+        >
+          📚 BAIXAR CARTAS (AISWEB) ↗
+        </a>
+      </div>
+
+      {/* 🛬 PAINEL DIREITO (DESTINO) */}
+      <div className="panel-side panel-right">
+        <div className="panel-title">
+          <span>🛬 DESTINO: {destinoAtivo}</span>
+          <span>🕒 LOCAL: {getHoraLocal(destinoAtivo)}</span>
+        </div>
+
+        <div className="card-clarity">
+          <h4>METAR OFICIAL (NOAA)</h4>
+          <p
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.8rem",
+              color: "#fff",
+            }}
+          >
+            {climaDestino?.metarCru || "Buscando dados na NOAA..."}
+          </p>
+        </div>
+
+        {/* ⚠️ ALERTA DE VENTO */}
+        <div className="card-clarity" style={{ borderTopColor: corAlerta }}>
+          <h4 style={{ color: corAlerta === "#444" ? "#00d2ff" : corAlerta }}>
+            CONDIÇÕES LOCAIS & VENTO
+          </h4>
+          <p>
+            🌬️ <b>Vento Atual:</b> {climaDestino?.ventoDir}° /{" "}
+            {climaDestino?.ventoVel} kt
+          </p>
+          <p>
+            ⚠️{" "}
+            <b>
+              Través na Pista {gpsAeroportos[destinoAtivo]?.pista / 10 || 0}:
+            </b>{" "}
+            <span style={{ color: corAlerta, fontWeight: "bold" }}>
+              {traves} kt
+            </span>
+          </p>
+          <p>
+            🌡️ <b>Temperatura:</b> {climaDestino?.temperatura}°C
+          </p>
+          <p>
+            ⚖️ <b>Pressão:</b> {climaDestino?.pressao} hPa
+          </p>
+        </div>
+
+        {/* 🩻 RAIO-X DESTINO */}
+        <div
+          className="card-clarity"
+          style={{ borderTopColor: "var(--cyan-neon)" }}
+        >
+          <h4>Raio-X da Infraestrutura</h4>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "10px" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <p>
+                🏔️ <b>Altitude:</b>
+              </p>
+              <span style={{ color: "var(--cyan-neon)", fontWeight: "bold" }}>
+                {gpsAeroportos[destinoAtivo]?.elevacao} ft
+              </span>
+            </div>
+            <div style={{ marginTop: "5px" }}>
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#aaa",
+                  marginBottom: "5px",
+                }}
+              >
+                COMPRIMENTO DA PISTA:
+              </p>
+              <div
+                style={{
+                  width: "100%",
+                  height: "10px",
+                  background: "#222",
+                  borderRadius: "5px",
+                  position: "relative",
+                  overflow: "hidden",
+                  border: "1px solid #444",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${(gpsAeroportos[destinoAtivo]?.comprimento / 4000) * 100}%`,
+                    height: "100%",
+                    background:
+                      gpsAeroportos[destinoAtivo]?.comprimento < 1500
+                        ? "#ff4d4d"
+                        : "#00d2ff",
+                    boxShadow: "0 0 10px #00d2ff",
+                  }}
+                ></div>
+              </div>
+              <p
+                style={{
+                  textAlign: "right",
+                  fontSize: "0.8rem",
+                  marginTop: "5px",
+                }}
+              >
+                <b>{gpsAeroportos[destinoAtivo]?.comprimento} metros</b>
+              </p>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+                marginTop: "5px",
+                borderTop: "1px solid #333",
+                paddingTop: "10px",
+              }}
+            >
+              <p>
+                🎙️ <b>TWR:</b> {gpsAeroportos[destinoAtivo]?.freqTorre}
+              </p>
+              <p>
+                🚜 <b>GND:</b> {gpsAeroportos[destinoAtivo]?.freqSolo}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card-clarity" style={{ borderTopColor: "#FFD700" }}>
+          <h4 style={{ color: "#FFD700" }}>AVISOS (NOTAM)</h4>
+          <p>
+            ⚠️ <b>PERIGO:</b> Intensa atividade de pássaros (Urubus) na
+            aproximação final.
+          </p>
+          <p>
+            ⚠️ <b>ATENÇÃO:</b> Luzes de eixo de pista inoperantes no primeiro
+            terço.
+          </p>
+          <p>⚠️ Pista escorregadia quando molhada.</p>
+        </div>
+
+        <a
+          href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${destinoAtivo}`}
+          target="_blank"
+          rel="noreferrer"
+          className="link-aisweb"
+        >
+          📚 BAIXAR CARTAS (AISWEB) ↗
+        </a>
+      </div>
+
+      {/* 🌧️ LEGENDA DO RADAR */}
+      <div className="legend-clarity">
+        <h4 style={{ color: "#00d2ff", marginBottom: "5px" }}>
+          ☂️ INTENSIDADE DA CHUVA
+        </h4>
+        <p>🟦 Chuva Leve</p>
+        <p>🟩 Chuva Moderada</p>
+        <p>🟨 Chuva Forte</p>
+        <p>🟧 Toró / Severa</p>
+        <p>🟪 Granizo Extremo</p>
+      </div>
+
+      {/* ⏰ FOOTER CENTRAL COM DISTÂNCIA */}
+      <div className="footer-clarity">
+        <span>
+          UTC:{" "}
+          <b style={{ color: "#00d2ff" }}>
+            {new Date().toISOString().substring(11, 16)}Z
+          </b>
+        </span>
+        <span style={{ color: "#555" }}>|</span>
+        <span>
+          📏 ROTA:{" "}
+          <b style={{ color: "#00d2ff", fontSize: "1.1rem" }}>
+            {dist ? `${dist} NM` : "---"}
+          </b>
+        </span>
+        <span style={{ color: "#555" }}>|</span>
+        <span>
+          ⏱️ ETE:{" "}
+          <b style={{ color: "#00d2ff", fontSize: "1.1rem" }}>
+            {dist ? tempo : "---"}
+          </b>
+        </span>
+        <span style={{ color: "#555" }}>|</span>
+        <span>SISTEMA ONLINE</span>
+      </div>
     </div>
   );
 }

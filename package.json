@@ -12,10 +12,14 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@tailwindcss/vite": "^4.2.2",
+    "axios": "^1.15.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "leaflet": "^1.9.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-leaflet": "^5.0.0"
+    "react-leaflet": "^5.0.0",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -30,5 +34,18 @@
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.4"
-  }
+  },
+  "description": "Sistema inteligente de briefing aeronáutico que utiliza a **IA Gemini 1.5 Flash** para analisar condições de voo, calcular horários solares e planejar rotas VFR/IFR.",
+  "main": "eslint.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maxsfs11-star/aerobrif.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/maxsfs11-star/aerobrif/issues"
+  },
+  "homepage": "https://github.com/maxsfs11-star/aerobrif#readme"
 }

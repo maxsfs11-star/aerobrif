@@ -1,126 +1,88 @@
 const express = require("express");
 const cors = require("cors");
-const axios = require("axios"); // Necessário para buscar nas APIs reais
+const axios = require("axios");
+const xml2js = require("xml2js"); // Precisamos disso para ler o formato da NOAA
 
 const app = express();
 app.use(cors());
-app.use(express.json());
 
-const PORT = 3001;
-
-// --- ROTA 1: RADAR AO VIVO (OpenSky Network) ---
+// --- ROTA DO RADAR (MANTIDA IGUAL) ---
+// --- ROTA DO RADAR (BLINDADA) ---
 app.get("/api/radar", async (req, res) => {
   try {
-    console.log("📡 Buscando tráfego aéreo REAL na OpenSky Network...");
+    const url =
+      "https://opensky-network.org/api/states/all?lamin=-34.0&lamax=5.0&lomin=-74.0&lomax=-34.0";
 
-    // Coordenadas formando um "quadrado" entre São Paulo e Rio de Janeiro
-    const lamin = -24.5;
-    const lamax = -22.0;
-    const lomin = -47.5;
-    const lomax = -42.0;
-
-    const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
-    const response = await axios.get(url);
+    // Adicionamos um limite de tempo (timeout de 5s) para a torre não ficar travada esperando
+    const response = await axios.get(url, { timeout: 5000 });
 
     if (!response.data || !response.data.states) {
-      return res.json([]); // Céu limpo
+      return res.json([]); // Retorna céu vazio sem dar erro
     }
 
-    const avioesReais = response.data.states
-      .map((state) => {
-        const altitudeMetros = state[7] || state[13];
-        const altitudePes = altitudeMetros
-          ? Math.round(altitudeMetros * 3.28084)
-          : 0;
-        const velocidadeMs = state[9];
-        const velocidadeNos = velocidadeMs
-          ? Math.round(velocidadeMs * 1.94384)
-          : 0;
+    const voosTratados = response.data.states
+      .filter((voo) => voo[5] && voo[6])
+      .map((voo) => ({
+        id: voo[1] ? voo[1].trim() : "VFR",
+        lng: voo[5],
+        lat: voo[6],
+        altitude: voo[7] ? Math.round(voo[7] * 3.28084) : 0,
+        velocidade: voo[9] ? Math.round(voo[9] * 1.94384) : 0,
+      }));
 
-        return {
-          id: state[1] ? state[1].trim() : "DESCONHECIDO",
-          origem: state[2],
-          lat: state[6],
-          lng: state[5],
-          altitude: `${altitudePes} ft`,
-          velocidade: `${velocidadeNos} kt`,
-          angulo: state[10] || 0,
-          status:
-            altitudePes < 5000 && velocidadeNos < 150
-              ? "Aproximação/Decolagem"
-              : "Cruzeiro",
-        };
-      })
-      .filter((aviao) => aviao.lat && aviao.lng); // Proteção: Só envia se tiver GPS
-
-    res.json(avioesReais);
+    res.json(voosTratados);
   } catch (error) {
-    console.error("❌ Erro ao buscar radar real:", error.message);
-    res.status(500).json({ erro: "Radar offline no momento." });
+    // A Torre avisa no terminal dela, mas entrega um céu vazio pro React em vez de um Erro 500!
+    console.error("📡 Soluço na OpenSky (ignorando):", error.message);
+    res.json([]);
   }
 });
 
-// --- ROTA 2: DADOS DA PISTA E CLIMA (REDEMET / DECEA) ---
-app.get("/api/aerodromo/:icao", async (req, res) => {
+// --- NOVA ROTA DE CLIMA (NOAA) ---
+app.get("/api/clima/:icao", async (req, res) => {
   const icao = req.params.icao.toUpperCase();
-
-  // ⚠️ ATENÇÃO: Substitua pela sua chave real da REDEMET quando criar a conta
-  const REDEMET_API_KEY = "COLOQUE_SUA_CHAVE_AQUI";
-
   try {
-    console.log(`🌦️ Solicitando dados oficiais para ${icao}...`);
+    // Busca o METAR mais recente
+    const urlMetar = `https://aviationweather.gov/api/data/dataserver?requestType=retrieve&dataSource=metars&stationString=${icao}&hoursBeforeNow=2&format=xml&mostRecent=true`;
 
-    // Resposta simulada super completa caso ainda não tenha a chave da REDEMET
-    if (REDEMET_API_KEY === "COLOQUE_SUA_CHAVE_AQUI") {
-      return res.json({
-        icao: icao,
-        metar: `${icao} 101200Z 12015KT 9999 BKN030 25/18 Q1015 (SIMULADO - INSIRA A CHAVE)`,
-        taf: `TAF ${icao} 101100Z 1012/1112 13010KT 9999 SCT030 (SIMULADO)`,
-        pista: "Asfalto Ranhurado - 1940m",
-        pressao: "1015 hPa",
-        vento: "120 graus a 15 Nós",
-        clima: "Parcialmente Nublado",
-        sol: "Nascer: 06:15 | Ocaso: 18:05",
-        notam: "Verifique a API do DECEA para NOTAMs reais.",
-        passaros: "⚠️ Simulação: Risco de aves na final da pista.",
-        cartas: ["ADC", "SID", "STAR"],
-      });
+    const response = await axios.get(urlMetar);
+
+    // A NOAA devolve em XML, precisamos converter para JSON
+    const parser = new xml2js.Parser({ explicitArray: false });
+    const result = await parser.parseStringPromise(response.data);
+
+    // Verifica se achou os dados
+    if (
+      !result.response ||
+      !result.response.data ||
+      !result.response.data.METAR
+    ) {
+      return res
+        .status(404)
+        .json({ error: "Clima indisponível para este aeródromo" });
     }
 
-    // CÓDIGO REAL (Só funciona com a API KEY válida)
-    const metarRes = await axios.get(
-      `https://api-redemet.decea.mil.br/mensagens/metar/${icao}?api_key=${REDEMET_API_KEY}`,
-    );
-    const metarReal = metarRes.data.data.data[0]
-      ? metarRes.data.data.data[0].mens
-      : "METAR não reportado";
+    const metarData = result.response.data.METAR;
 
-    const tafRes = await axios.get(
-      `https://api-redemet.decea.mil.br/mensagens/taf/${icao}?api_key=${REDEMET_API_KEY}`,
-    );
-    const tafReal = tafRes.data.data.data[0]
-      ? tafRes.data.data.data[0].mens
-      : "TAF não reportado";
+    // Monta um objeto limpo com os dados oficiais
+    const climaLimpo = {
+      metarCru: metarData.raw_text || "Aguardando...",
+      temperatura: metarData.temp_c || "--",
+      ventoDir: metarData.wind_dir_degrees || "--",
+      ventoVel: metarData.wind_speed_kt || "--",
+      pressao: metarData.altim_in_hg
+        ? (parseFloat(metarData.altim_in_hg) * 33.8639).toFixed(0)
+        : "--", // Converte inHg para hPa
+      condicao: metarData.flight_category || "VFR",
+    };
 
-    res.json({
-      icao: icao,
-      metar: metarReal,
-      taf: tafReal,
-      pista: "Dados requerem API AISWEB",
-      vento: "Aguardando decodificação...",
-      clima: "Aguardando decodificação...",
-      pressao: "Aguardando decodificação...",
-      sol: "Calculando efemérides...",
-      notam: "Sem avisos urgentes.",
-      passaros: "Nenhum reporte crítico.",
-      cartas: ["ADC", "SID", "STAR"],
-    });
+    res.json(climaLimpo);
   } catch (error) {
-    console.error(`❌ Erro ao buscar ${icao} na REDEMET:`, error.message);
-    res.status(500).json({ erro: "Falha na comunicação com o DECEA." });
+    console.error(`☁️ Erro NOAA para ${icao}:`, error.message);
+    res.status(500).json({ error: "Falha ao buscar clima oficial" });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Torre de Controle (Servidor) rodando na porta ${PORT}`);
+app.listen(3001, () => {
+  console.log(`✅ Torre de Controle AEROBRIF online na porta 3001!`);
 });
