@@ -1,5 +1,4 @@
 require("dotenv").config();
-const express = require("express"); // ... resto dos seus imports
 
 const express = require("express");
 const cors = require("cors");
@@ -98,8 +97,11 @@ app.get("/api/taf/:icao", async (req, res) => {
   }
 });
 
-app.listen(3001, () => {
-  console.log(`✅ Torre de Controle AEROBRIF online na porta 3001!`);
+// A porta será definida pelo Render (process.env.PORT) ou será 3001 no seu PC
+const PORT = process.env.PORT || 3001;
+
+app.listen(PORT, () => {
+  console.log(`✅ Torre de Controle AEROBRIF online na porta ${PORT}`);
 });
 
 // 4️⃣ ROTA DOS NOTAMs (Buscando na CheckWX API com Blindagem Anti-Queda)
