@@ -736,6 +736,7 @@ function App() {
               key={radarTime}
               url={`https://tilecache.rainviewer.com/v2/radar/${radarTime}/256/{z}/{x}/{y}/4/1_1.png`}
               opacity={0.8}
+              zIndex={100}
             />
           )}
 
