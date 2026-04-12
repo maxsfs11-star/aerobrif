@@ -6,7 +6,12 @@ const axios = require("axios");
 const app = express();
 app.use(cors());
 
-// 1️⃣ ROTA DOS AVIÕES
+// 🧪 ROTA DE TESTE (Para saber se a torre está viva)
+app.get("/", (req, res) => {
+  res.send("<h1>✅ Torre de Controle AEROBRIF: Online e Operacional!</h1>");
+});
+
+// 1️⃣ ROTA DOS AVIÕES (Radar)
 app.get("/api/radar", async (req, res) => {
   try {
     const url =
@@ -16,6 +21,7 @@ app.get("/api/radar", async (req, res) => {
         username: process.env.OPENSKY_USER,
         password: process.env.OPENSKY_PASS,
       },
+      timeout: 10000,
     });
 
     if (!response.data || !response.data.states) return res.json([]);
@@ -32,60 +38,49 @@ app.get("/api/radar", async (req, res) => {
 
     res.json(voosTratados);
   } catch (error) {
-    if (error.response && error.response.status === 429) {
-      return res.json([
-        {
-          id: "GOL1920",
-          lat: -23.5,
-          lng: -46.5,
-          altitude: 15000,
-          velocidade: 250,
-        },
-        {
-          id: "TAM3411",
-          lat: -22.9,
-          lng: -43.3,
-          altitude: 12000,
-          velocidade: 220,
-        },
-        {
-          id: "AZU8755",
-          lat: -23.1,
-          lng: -45.0,
-          altitude: 20000,
-          velocidade: 300,
-        },
-      ]);
-    }
-    res.status(500).json({ error: "Falha na comunicação" });
+    console.log("📡 Ativando Radar de Simulação (OpenSky Offline/Timedout)");
+    res.json([
+      {
+        id: "SIM-GOL1",
+        lat: -23.5,
+        lng: -46.5,
+        altitude: 15000,
+        velocidade: 250,
+      },
+      {
+        id: "SIM-TAM2",
+        lat: -22.9,
+        lng: -43.3,
+        altitude: 12000,
+        velocidade: 220,
+      },
+    ]);
   }
 });
 
-// 2️⃣ ROTA METAR
+// 2️⃣ ROTA METAR, 3️⃣ TAF e 4️⃣ NOTAM (Coloque todas ANTES do listen)
 app.get("/api/metar/:icao", async (req, res) => {
   try {
     const response = await axios.get(
       `https://aviationweather.gov/api/data/metar?ids=${req.params.icao}&format=json`,
     );
     res.json(response.data);
-  } catch (error) {
-    res.status(500).json({ error: "Falha ao buscar METAR" });
+  } catch (e) {
+    res.status(500).json([]);
   }
 });
 
-// 3️⃣ ROTA TAF
 app.get("/api/taf/:icao", async (req, res) => {
   try {
     const response = await axios.get(
       `https://aviationweather.gov/api/data/taf?ids=${req.params.icao}&format=json`,
     );
     res.json(response.data);
-  } catch (error) {
-    res.status(500).json({ error: "Falha ao buscar TAF" });
+  } catch (e) {
+    res.status(500).json([]);
   }
 });
 
-// 4️⃣ ROTA DOS NOTAMs
 app.get("/api/notam/:icao", async (req, res) => {
   try {
     const response = await axios.get(
@@ -96,16 +91,13 @@ app.get("/api/notam/:icao", async (req, res) => {
       },
     );
     res.json(response.data.data || []);
-  } catch (error) {
-    res.json([
-      `⚠️ MODO OFFLINE: Falha para ${req.params.icao}.`,
-      `⚠️ Dados simulados.`,
-    ]);
+  } catch (e) {
+    res.json(["⚠️ Erro ao buscar NOTAMs reais."]);
   }
 });
 
-// 🚀 LIGA O MOTOR (SEMPRE POR ÚLTIMO)
+// 🚀 LIGA O MOTOR (A ÚLTIMA LINHA DO ARQUIVO)
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`✅ Torre de Controle AEROBRIF online na porta ${PORT}`);
+  console.log(`✅ Torre de Controle online na porta ${PORT}`);
 });
