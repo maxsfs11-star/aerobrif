@@ -593,21 +593,21 @@ function App() {
     if (!origemAtiva || !destinoAtivo) return;
 
     // ---- BUSCANDO ORIGEM ----
-    fetch(`http://localhost:3001/api/metar/${origemAtiva}`)
+    fetch(`https://aerobrif.onrender.com/api/metar/${origemAtiva}`)
       .then((res) => res.json())
       .then((data) =>
         setMetarOrigem(data.length > 0 ? data[0].rawOb : "METAR Indisponível"),
       )
       .catch(() => setMetarOrigem("Erro na Torre"));
 
-    fetch(`http://localhost:3001/api/taf/${origemAtiva}`)
+    fetch(`https://aerobrif.onrender.com1/api/taf/${origemAtiva}`)
       .then((res) => res.json())
       .then((data) =>
         setTafOrigem(data.length > 0 ? data[0].rawTAF : "TAF Indisponível"),
       )
       .catch(() => setTafOrigem("Erro na Torre"));
 
-    fetch(`http://localhost:3001/api/notam/${origemAtiva}`)
+    fetch(`https://aerobrif.onrender.com/api/notam/${origemAtiva}`)
       .then((res) => res.json())
       .then((data) =>
         setNotamOrigem(data.length > 0 ? data : ["✅ Nenhum NOTAM crítico."]),
@@ -615,21 +615,21 @@ function App() {
       .catch(() => setNotamOrigem(["❌ Falha ao carregar NOTAMs."]));
 
     // ---- BUSCANDO DESTINO ----
-    fetch(`http://localhost:3001/api/metar/${destinoAtivo}`)
+    fetch(`https://aerobrif.onrender.com/api/metar/${destinoAtivo}`)
       .then((res) => res.json())
       .then((data) =>
         setMetarDestino(data.length > 0 ? data[0].rawOb : "METAR Indisponível"),
       )
       .catch(() => setMetarDestino("Erro na Torre"));
 
-    fetch(`http://localhost:3001/api/taf/${destinoAtivo}`)
+    fetch(`https://aerobrif.onrender.com/api/taf/${destinoAtivo}`)
       .then((res) => res.json())
       .then((data) =>
         setTafDestino(data.length > 0 ? data[0].rawTAF : "TAF Indisponível"),
       )
       .catch(() => setTafDestino("Erro na Torre"));
 
-    fetch(`http://localhost:3001/api/notam/${destinoAtivo}`)
+    fetch(`https://aerobrif.onrender.com/api/notam/${destinoAtivo}`)
       .then((res) => res.json())
       .then((data) =>
         setNotamDestino(data.length > 0 ? data : ["✅ Nenhum NOTAM crítico."]),
@@ -652,7 +652,7 @@ function App() {
   // ✈️ Radar Online com Check de Conexão
   useEffect(() => {
     const bRadar = () => {
-      fetch("http://localhost:3001/api/radar")
+      fetch("https://aerobrif.onrender.com/api/radar")
         .then((res) => {
           if (!res.ok) throw new Error();
           return res.json();
@@ -1193,7 +1193,6 @@ function App() {
           </b>
         </span>
         <span>
-
           <span
             style={{
               color: isServerOnline ? "#00ff00" : "#ff4d4d",
@@ -1206,7 +1205,6 @@ function App() {
             RADAR {isServerOnline ? "ONLINE" : "OFFLINE"}
           </b>
         </span>
-        
       </div>
     </div>
   );
