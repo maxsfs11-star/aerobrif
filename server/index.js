@@ -1,24 +1,28 @@
+require("dotenv").config();
+const express = require("express"); // ... resto dos seus imports
+
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
-const xml2js = require("xml2js"); // Precisamos disso para ler o formato da NOAA
 
 const app = express();
 app.use(cors());
 
-// --- ROTA DO RADAR (MANTIDA IGUAL) ---
-// --- ROTA DO RADAR (BLINDADA) ---
+// 1️⃣ ROTA DOS AVIÕES (Com Login da OpenSky)
+// 1️⃣ ROTA DOS AVIÕES (Com Login e Radar de Emergência/Simulação)
 app.get("/api/radar", async (req, res) => {
   try {
     const url =
       "https://opensky-network.org/api/states/all?lamin=-34.0&lamax=5.0&lomin=-74.0&lomax=-34.0";
 
-    // Adicionamos um limite de tempo (timeout de 5s) para a torre não ficar travada esperando
-    const response = await axios.get(url, { timeout: 5000 });
+    const response = await axios.get(url, {
+      auth: {
+        username: process.env.OPENSKY_USER,
+        password: process.env.OPENSKY_PASS,
+      },
+    });
 
-    if (!response.data || !response.data.states) {
-      return res.json([]); // Retorna céu vazio sem dar erro
-    }
+    if (!response.data || !response.data.states) return res.json([]);
 
     const voosTratados = response.data.states
       .filter((voo) => voo[5] && voo[6])
@@ -32,57 +36,94 @@ app.get("/api/radar", async (req, res) => {
 
     res.json(voosTratados);
   } catch (error) {
-    // A Torre avisa no terminal dela, mas entrega um céu vazio pro React em vez de um Erro 500!
-    console.error("📡 Soluço na OpenSky (ignorando):", error.message);
-    res.json([]);
+    // 🚨 SE A OPENSKY BLOQUEAR (ERRO 429), ATIVAR RADAR DE SIMULAÇÃO:
+    if (error.response && error.response.status === 429) {
+      console.log(
+        "📡 OpenSky bloqueou o IP (429). Ativando Radar de Simulação...",
+      );
+
+      // Retorna aviões "falsos" para você continuar testando o visual do App
+      return res.json([
+        {
+          id: "GOL1920",
+          lat: -23.5,
+          lng: -46.5,
+          altitude: 15000,
+          velocidade: 250,
+        },
+        {
+          id: "TAM3411",
+          lat: -22.9,
+          lng: -43.3,
+          altitude: 12000,
+          velocidade: 220,
+        },
+        {
+          id: "AZU8755",
+          lat: -23.1,
+          lng: -45.0,
+          altitude: 20000,
+          velocidade: 300,
+        },
+      ]);
+    }
+
+    // Se for outro erro grave:
+    console.error("📡 Erro OpenSky:", error.message);
+    res.status(500).json({ error: "Falha na comunicação" });
   }
 });
 
-// --- NOVA ROTA DE CLIMA (NOAA) ---
-app.get("/api/clima/:icao", async (req, res) => {
-  const icao = req.params.icao.toUpperCase();
+// 2️⃣ ROTA METAR (Buscando na NOAA)
+app.get("/api/metar/:icao", async (req, res) => {
   try {
-    // Busca o METAR mais recente
-    const urlMetar = `https://aviationweather.gov/api/data/dataserver?requestType=retrieve&dataSource=metars&stationString=${icao}&hoursBeforeNow=2&format=xml&mostRecent=true`;
-
-    const response = await axios.get(urlMetar);
-
-    // A NOAA devolve em XML, precisamos converter para JSON
-    const parser = new xml2js.Parser({ explicitArray: false });
-    const result = await parser.parseStringPromise(response.data);
-
-    // Verifica se achou os dados
-    if (
-      !result.response ||
-      !result.response.data ||
-      !result.response.data.METAR
-    ) {
-      return res
-        .status(404)
-        .json({ error: "Clima indisponível para este aeródromo" });
-    }
-
-    const metarData = result.response.data.METAR;
-
-    // Monta um objeto limpo com os dados oficiais
-    const climaLimpo = {
-      metarCru: metarData.raw_text || "Aguardando...",
-      temperatura: metarData.temp_c || "--",
-      ventoDir: metarData.wind_dir_degrees || "--",
-      ventoVel: metarData.wind_speed_kt || "--",
-      pressao: metarData.altim_in_hg
-        ? (parseFloat(metarData.altim_in_hg) * 33.8639).toFixed(0)
-        : "--", // Converte inHg para hPa
-      condicao: metarData.flight_category || "VFR",
-    };
-
-    res.json(climaLimpo);
+    const response = await axios.get(
+      `https://aviationweather.gov/api/data/metar?ids=${req.params.icao}&format=json`,
+    );
+    res.json(response.data);
   } catch (error) {
-    console.error(`☁️ Erro NOAA para ${icao}:`, error.message);
-    res.status(500).json({ error: "Falha ao buscar clima oficial" });
+    res.status(500).json({ error: "Falha ao buscar METAR" });
+  }
+});
+
+// 3️⃣ ROTA TAF (Buscando na NOAA)
+app.get("/api/taf/:icao", async (req, res) => {
+  try {
+    const response = await axios.get(
+      `https://aviationweather.gov/api/data/taf?ids=${req.params.icao}&format=json`,
+    );
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: "Falha ao buscar TAF" });
   }
 });
 
 app.listen(3001, () => {
   console.log(`✅ Torre de Controle AEROBRIF online na porta 3001!`);
+});
+
+// 4️⃣ ROTA DOS NOTAMs (Buscando na CheckWX API com Blindagem Anti-Queda)
+app.get("/api/notam/:icao", async (req, res) => {
+  try {
+    const response = await axios.get(
+      `https://api.checkwx.com/notam/${req.params.icao}`,
+      {
+        headers: {
+          "X-API-Key": process.env.CHECKWX_KEY,
+        },
+        timeout: 5000, // Se demorar mais de 5 segundos, ele aborta e usa o simulador
+      },
+    );
+
+    res.json(response.data.data || []);
+  } catch (error) {
+    console.log(
+      `🚨 Conexão com CheckWX falhou (Timeout). Injetando NOTAM de emergência para ${req.params.icao}...`,
+    );
+    // Se a internet falhar, ele manda este aviso para a tela não quebrar:
+    res.json([
+      `⚠️ MODO OFFLINE: Falha de conexão com os servidores de NOTAM para ${req.params.icao}.`,
+      `⚠️ Operando com dados simulados temporários.`,
+    ]);
+  }
 });
