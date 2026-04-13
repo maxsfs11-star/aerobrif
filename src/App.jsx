@@ -610,11 +610,22 @@ function App() {
 
     fetch(`https://aerobrif.onrender.com/api/notam/${origemAtiva}`)
       .then((res) => res.json())
-      .then((data) =>
-        setNotamOrigem(data.length > 0 ? data : ["✅ Nenhum NOTAM crítico."]),
-      )
-      .catch(() => setNotamOrigem(["❌ Falha ao carregar NOTAMs."]));
-
+      // Substitua o .then do NOTAM por este:
+      .then((data) => {
+        // Se os dados não forem uma lista de textos, limpamos para não dar erro
+        if (Array.isArray(data)) {
+          const apenasTextos = data.map((item) =>
+            typeof item === "string" ? item : JSON.stringify(item),
+          );
+          setNotamOrigem(
+            apenasTextos.length > 0
+              ? apenasTextos
+              : ["✅ Nenhum NOTAM crítico."],
+          );
+        } else {
+          setNotamOrigem(["✅ Nenhum NOTAM crítico."]);
+        }
+      });
     // ---- BUSCANDO DESTINO ----
     fetch(`https://aerobrif.onrender.com/api/metar/${destinoAtivo}`)
       .then((res) => res.json())
@@ -740,12 +751,12 @@ function App() {
         >
           <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
 
-          {/* Nuvens sobrepostas */}
-          {radarTime && (
+          {radarTime && weatherType && (
             <TileLayer
-              key={`${weatherType}-${radarTime}`} // 👈 O segredo: o 'key' força o mapa a redesenhar
-              url={`https://tilecache.rainviewer.com/v2/${weatherType}/${radarTime}/256/{z}/{x}/{y}/2/1_1.png`}
-              opacity={0.7}
+              key={`${weatherType}-${radarTime}`}
+              // Usando o esquema de cores '0' (original) que é o mais compatível para evitar quadrados
+              url={`https://tilecache.rainviewer.com/v2/${weatherType}/${radarTime}/256/{z}/{x}/{y}/0/1_1.png`}
+              opacity={0.6}
               zIndex={100}
             />
           )}
