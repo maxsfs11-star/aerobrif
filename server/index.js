@@ -5,14 +5,9 @@ const axios = require("axios");
 
 const app = express();
 
-// 🔓 LIBERAÇÃO TOTAL DE PORTÕES (CORS) - Fundamental para Web e Mobile
-app.use(
-  cors({
-    origin: ["https://aerobrif.onrender.com"],
-  }),
-);
+// 🔓 1. CORS TOTALMENTE ABERTO (Evita qualquer bloqueio do Vercel ou Localhost)
+app.use(cors());
 
-// 📝 LOGS DE DIAGNÓSTICO (Aparecem no painel do Render)
 console.log(
   "CHAVE CHECKWX:",
   process.env.CHECKWX_KEY ? "Configurada ✅" : "Vazia ❌",
@@ -22,12 +17,11 @@ console.log(
   process.env.OPENSKY_USER ? "Configurado ✅" : "Vazio ❌",
 );
 
-// 🟢 ROTA DE TESTE DA TORRE
 app.get("/", (req, res) => {
   res.send("Torre de Controle AEROBRIF: Online e Operacional!");
 });
 
-// ✈️ ROTA DO RADAR (Aviões) - Com timeout e tradutor
+// ✈️ ROTA DO RADAR
 app.get("/api/radar", async (req, res) => {
   try {
     const response = await axios.get(
@@ -37,11 +31,15 @@ app.get("/api/radar", async (req, res) => {
           username: process.env.OPENSKY_USER,
           password: process.env.OPENSKY_PASS,
         },
-        timeout: 5000, // Se a OpenSky demorar 5s, pula pro simulado
+        timeout: 5000,
       },
     );
 
-    // Tradutor: Transforma a lista confusa da OpenSky no objeto que o seu mapa entende
+    // 🛑 A TRAVA DE SEGURANÇA: Se a API negar, a gente pula pro simulado antes do servidor cair!
+    if (!response.data || !response.data.states) {
+      throw new Error("OpenSky bloqueou ou enviou vazio");
+    }
+
     const voos = response.data.states.slice(0, 20).map((voo) => ({
       id: voo[1] ? voo[1].trim() : "VFR",
       lng: voo[5],
@@ -52,7 +50,7 @@ app.get("/api/radar", async (req, res) => {
 
     res.json(voos);
   } catch (error) {
-    // SE DER ERRO OU TIMEOUT, MANDA SIMULADOS NO FORMATO CORRETO PARA NÃO QUEBRAR A TELA
+    // Modo de Emergência Ativado: Mantém o site bonito e rodando.
     res.json([
       {
         id: "SIM-GOL1",
@@ -72,23 +70,24 @@ app.get("/api/radar", async (req, res) => {
   }
 });
 
-// 📑 ROTA NOTAM (Avisos de Aeroporto)
+// 📑 ROTA NOTAM (URL Atualizada)
 app.get("/api/notam/:icao", async (req, res) => {
   try {
     const response = await axios.get(
-      `https://api.checkwx.com/bot/notam/${req.params.icao}`,
+      `https://api.checkwx.com/notam/${req.params.icao}`, // Correção da rota
       {
         headers: { "X-API-Key": process.env.CHECKWX_KEY },
         timeout: 5000,
       },
     );
-    res.json(response.data.notams || ["Nenhum NOTAM ativo agora."]);
+    // A CheckWX moderna envia os avisos dentro da variável "data"
+    res.json(response.data.data || ["Nenhum NOTAM ativo agora."]);
   } catch (error) {
     res.json(["⚠️ Torre em modo de espera. Verifique a chave da API."]);
   }
 });
 
-// 🌤️ ROTA METAR (Condições Atuais)
+// 🌤️ ROTA METAR
 app.get("/api/metar/:icao", async (req, res) => {
   try {
     const response = await axios.get(
@@ -100,7 +99,7 @@ app.get("/api/metar/:icao", async (req, res) => {
   }
 });
 
-// 🌤️ ROTA TAF (Previsão do Tempo)
+// 🌤️ ROTA TAF
 app.get("/api/taf/:icao", async (req, res) => {
   try {
     const response = await axios.get(
@@ -112,7 +111,6 @@ app.get("/api/taf/:icao", async (req, res) => {
   }
 });
 
-// 🚀 LIGANDO O MOTOR
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`✅ Hangar aberto na porta ${PORT}`);
