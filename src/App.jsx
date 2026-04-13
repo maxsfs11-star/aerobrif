@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   MapContainer,
   TileLayer,
+  WMSTileLayer,
   Marker,
   Popup,
   Polyline,
@@ -638,27 +639,6 @@ function App() {
       .catch(() => setNotamDestino(["❌ Falha ao carregar NOTAMs."]));
   }, [origemAtiva, destinoAtivo]);
 
-  useEffect(() => {
-    fetch("https://api.rainviewer.com/public/weather-maps.json")
-      .then((res) => res.json())
-      .then((data) => {
-        // 🛰️ Tenta satélite primeiro (nuvens brancas)
-        const sat = data?.satellite?.infrared;
-        const rad = data?.radar?.past;
-
-        if (sat && sat.length > 0) {
-          setRadarTime(sat[sat.length - 1].time);
-          setWeatherType("satellite");
-          console.log("🛰️ Modo: Satélite (Nuvens)");
-        } else if (rad && rad.length > 0) {
-          setRadarTime(rad[rad.length - 1].time);
-          setWeatherType("radar");
-          console.log("⛈️ Modo: Radar (Chuva)");
-        }
-      })
-      .catch((err) => console.log("❌ Erro ao buscar clima:", err));
-  }, []);
-
   // ✈️ Radar Online com Check de Conexão
   useEffect(() => {
     const bRadar = () => {
@@ -746,15 +726,15 @@ function App() {
             maxNativeZoom={19}
           />
 
-          {/* O SEGREDO DO CLIMA: Se for Satélite (nuvem) usa o esquema 0. Se for Radar (chuva), usa o 8. */}
-          {radarTime && weatherType && (
-            <TileLayer
-              key={`${weatherType}-${radarTime}`}
-              url={`https://tilecache.rainviewer.com/v2/${weatherType}/${radarTime}/256/{z}/{x}/{y}/${weatherType === "satellite" ? "0" : "8"}/1_1.png`}
-              opacity={weatherType === "satellite" ? 0.4 : 0.8}
-              zIndex={100}
-            />
-          )}
+          {/* 🌩️ NOVA CAMADA DE NUVENS (Satélite GOES - Tempo Real e Sem Bugs) */}
+          <WMSTileLayer
+            url="https://mesonet.agron.iastate.edu/cgi-bin/wms/goes/global.cgi"
+            layers="goes_global_ir"
+            format="image/png"
+            transparent={true}
+            opacity={0.5} // Ajuste a transparência das nuvens aqui
+            zIndex={100}
+          />
 
           {/* Resto dos marcadores (Linha, Origem, Destino) */}
           {gpsAeroportos[origemAtiva] && gpsAeroportos[destinoAtivo] && (

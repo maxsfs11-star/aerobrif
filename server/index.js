@@ -61,9 +61,29 @@ app.get("/api/taf/:icao", async (req, res) => {
   }
 });
 
-// 📑 NOTAM: Desativado temporariamente com aviso seguro para não dar tela branca
-app.get("/api/notam/:icao", (req, res) => {
-  res.json(["✅ Torre de NOTAMs em manutenção. Focando no Radar e Clima."]);
+/// ✈️ ROTA NOTAM COM A NOVA API (AVWX)
+app.get("/api/notam/:icao", async (req, res) => {
+  try {
+    const response = await axios.get(
+      `https://avwx.rest/api/notam/${req.params.icao}`,
+      {
+        headers: { Authorization: `Token ${process.env.AVWX_TOKEN}` },
+        timeout: 5000,
+      },
+    );
+
+    // A AVWX manda os dados limpos, a gente só puxa o texto (raw)
+    const notams = response.data.map((n) => n.raw);
+
+    res.json(
+      notams.length > 0 ? notams : ["✅ Nenhum NOTAM ativo no momento."],
+    );
+  } catch (error) {
+    console.error("Erro AVWX:", error.message);
+    res.json([
+      "⚠️ Falha ao buscar NOTAM. Verifique seu token da AVWX no Render.",
+    ]);
+  }
 });
 
 // LIGANDO O SERVIDOR
