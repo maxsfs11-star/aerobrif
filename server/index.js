@@ -9,7 +9,7 @@ app.use(cors());
 
 app.get("/", (req, res) => res.send("Torre AEROBRIF: Online 100%"));
 
-// ROTA RADAR COM "ESCAPE"
+// ROTA RADAR COM "ESCAPE" CORRIGIDO
 app.get("/api/radar", async (req, res) => {
   try {
     const response = await axios.get(
@@ -22,10 +22,35 @@ app.get("/api/radar", async (req, res) => {
         timeout: 5000,
       },
     );
-    res.json(response.data.states.slice(0, 20)); // Manda só 20 aviões pra ser rápido
+
+    // 👈 O TRADUTOR QUE EU TINHA ESQUECIDO (Transforma lista crua em Objeto)
+    const voos = response.data.states.slice(0, 20).map((voo) => ({
+      id: voo[1] ? voo[1].trim() : "VFR",
+      lng: voo[5],
+      lat: voo[6],
+      altitude: voo[7] ? Math.round(voo[7] * 3.28084) : 0,
+      velocidade: voo[9] ? Math.round(voo[9] * 1.94384) : 0,
+    }));
+
+    res.json(voos);
   } catch (e) {
-    // SE DER ERRO, MANDA SIMULADO (Pra não dar tela branca nunca mais!)
-    res.json([["", "SIM-GOL", "Brazil", 0, -23.5, -46.6, 10000, false, 250]]);
+    // 👈 SIMULADOS EM FORMATO DE OBJETO TAMBÉM
+    res.json([
+      {
+        id: "GOL-SIM",
+        lat: -23.5,
+        lng: -46.6,
+        altitude: 32000,
+        velocidade: 450,
+      },
+      {
+        id: "TAM-SIM",
+        lat: -22.9,
+        lng: -43.2,
+        altitude: 28000,
+        velocidade: 420,
+      },
+    ]);
   }
 });
 
