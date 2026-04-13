@@ -637,16 +637,20 @@ function App() {
       .catch(() => setNotamDestino(["❌ Falha ao carregar NOTAMs."]));
   }, [origemAtiva, destinoAtivo]);
 
-  // 2️⃣ NUVENS (RainViewer)
+  // ☁️ BUSCA HORÁRIO DO SATÉLITE (MAIS PRECISO PARA NUVENS)
   useEffect(() => {
     fetch("https://api.rainviewer.com/public/weather-maps.json")
       .then((res) => res.json())
       .then((data) => {
-        if (data?.radar?.past) {
-          setRadarTime(data.radar.past[data.radar.past.length - 1].time);
+        // Prioriza o satélite infravermelho (igual ao INMET)
+        if (data?.satellite?.infrared) {
+          const ultimoHorario =
+            data.satellite.infrared[data.satellite.infrared.length - 1].time;
+          setRadarTime(ultimoHorario);
+          console.log("✅ Horário do Satélite injetado:", ultimoHorario);
         }
       })
-      .catch((err) => console.log("Erro Nuvens", err));
+      .catch((err) => console.log("❌ Erro ao buscar nuvens:", err));
   }, []);
 
   // ✈️ Radar Online com Check de Conexão
@@ -734,7 +738,7 @@ function App() {
           {radarTime && (
             <TileLayer
               key={radarTime}
-              url={`https://tilecache.rainviewer.com/v2/radar/${radarTime}/256/{z}/{x}/{y}/4/1_1.png`}
+              url={`https://tilecache.rainviewer.com/v2/satellite/${radarTime}/256/{z}/{x}/{y}/4/1_1.png`}
               opacity={0.6}
               zIndex={100}
             />
