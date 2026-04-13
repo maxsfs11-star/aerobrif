@@ -14,6 +14,64 @@ const cors = require("cors");
 const axios = require("axios");
 
 const app = express();
+
+app.use(
+  cors({
+    origin: "*", // Permite que qualquer origem (Vercel) acesse
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-API-Key"],
+  }),
+);
+
+// ✈️ ROTA DO RADAR COM TIMEOUT (Para evitar o erro 502)
+app.get("/api/radar", async (req, res) => {
+  try {
+    const response = await axios.get(
+      "https://opensky-network.org/api/states/all?lamin=-34.0&lamax=5.0&lomin=-74.0&lomax=-34.0",
+      {
+        auth: {
+          username: process.env.OPENSKY_USER,
+          password: process.env.OPENSKY_PASS,
+        },
+        timeout: 8000, // Se a OpenSky não responder em 8s, ele desiste e usa o simulador
+      },
+    );
+
+    if (!response.data || !response.data.states) {
+      return res.json([]);
+    }
+
+    const voos = response.data.states.map((voo) => ({
+      id: voo[1] ? voo[1].trim() : "VFR",
+      lng: voo[5],
+      lat: voo[6],
+      altitude: voo[7] ? Math.round(voo[7] * 3.28084) : 0,
+      velocidade: voo[9] ? Math.round(voo[9] * 1.94384) : 0,
+    }));
+
+    res.json(voos);
+  } catch (error) {
+    console.log("📡 OpenSky demorou ou falhou. Ativando Modo de Emergência.");
+    // Retorna dados simulados para o site não ficar vazio e não dar erro 502
+    res.json([
+      {
+        id: "GOL-SIM",
+        lat: -23.5,
+        lng: -46.6,
+        altitude: 32000,
+        velocidade: 450,
+      },
+      {
+        id: "TAM-SIM",
+        lat: -22.9,
+        lng: -43.2,
+        altitude: 28000,
+        velocidade: 420,
+      },
+    ]);
+  }
+});
+
 app.use(cors());
 
 // 🧪 ROTA DE TESTE (Para saber se a torre está viva)
