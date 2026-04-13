@@ -518,6 +518,7 @@ function App() {
   const [cidadesSobrevoo, setCidadesSobrevoo] = useState({});
   const [radarTime, setRadarTime] = useState(null);
   const [isServerOnline, setIsServerOnline] = useState(false);
+  const [weatherType, setWeatherType] = useState("radar"); // 👈 Adicione esta linha
 
   // Estados do Clima e Avisos
   const [metarOrigem, setMetarOrigem] = useState("Aguardando NOAA...");
@@ -637,31 +638,23 @@ function App() {
       .catch(() => setNotamDestino(["❌ Falha ao carregar NOTAMs."]));
   }, [origemAtiva, destinoAtivo]);
 
-  // ☁️ BUSCA HORÁRIO DAS NUVENS (VERSÃO REVISADA)
   useEffect(() => {
     fetch("https://api.rainviewer.com/public/weather-maps.json")
       .then((res) => res.json())
       .then((data) => {
-        // 🛰️ Tenta capturar o Satélite (Nuvens de calor, estilo INMET)
-        const sat = data?.satellite?.infrared;
-        // ⛈️ Tenta capturar o Radar (Chuva/Tempestade)
-        const rad = data?.radar?.past;
-
-        if (sat && sat.length > 0) {
-          setRadarTime(sat[sat.length - 1].time);
-          console.log("✅ Satélite detectado:", sat[sat.length - 1].time);
-        } else if (rad && rad.length > 0) {
-          setRadarTime(rad[rad.length - 1].time);
-          console.log("✅ Radar detectado:", rad[rad.length - 1].time);
-        } else {
-          console.log("⚠️ Nenhuma imagem disponível no RainViewer agora.");
+        // Tenta satélite primeiro, se não tiver, vai de radar
+        if (data?.satellite?.infrared) {
+          setRadarTime(
+            data.satellite.infrared[data.satellite.infrared.length - 1].time,
+          );
+          setWeatherType("satellite");
+        } else if (data?.radar?.past) {
+          setRadarTime(data.radar.past[data.radar.past.length - 1].time);
+          setWeatherType("radar");
         }
       })
-      .catch((err) =>
-        console.log("❌ Erro na comunicação com RainViewer:", err),
-      );
+      .catch((err) => console.log("Erro Nuvens", err));
   }, []);
-
   // ✈️ Radar Online com Check de Conexão
   useEffect(() => {
     const bRadar = () => {
@@ -746,9 +739,10 @@ function App() {
           {/* Nuvens sobrepostas */}
           {radarTime && (
             <TileLayer
-              key={radarTime}
-              url={`https://tilecache.rainviewer.com/v2/satellite/${radarTime}/256/{z}/{x}/{y}/2/1_1.png`}
-              opacity={0.8}
+              key={`${weatherType}-${radarTime}`}
+              // Aqui o link muda sozinho entre satellite ou radar 🛰️⛈️
+              url={`https://tilecache.rainviewer.com/v2/${weatherType}/${radarTime}/256/{z}/{x}/{y}/2/1_1.png`}
+              opacity={0.7}
               zIndex={100}
             />
           )}
