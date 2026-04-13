@@ -792,7 +792,7 @@ function App() {
             </>
           )}
 
-          {radar.map((aviao, id) => (
+          {radar.map((aviao) => (
             <Marker
               key={aviao.id}
               position={[aviao.lat, aviao.lng]}
