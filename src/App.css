@@ -365,18 +365,38 @@
 }
 
 /* Isso vai fazer os aviões brilharem no mapa escuro */
+/* Estilo do Ponto do Radar */
 .radar-blip {
   width: 12px;
   height: 12px;
-  background-color: #00ff00; /* Verde neon */
+  background-color: #00ff00; /* Verde Neon */
   border-radius: 50%;
-  box-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00;
-  border: 2px solid white;
-  animation: pulse-radar 2s infinite;
+  box-shadow:
+    0 0 10px #00ff00,
+    0 0 20px #00ff00;
+  border: 2px solid #ffffff;
+  animation: pulse-blip 2s infinite;
 }
 
-@keyframes pulse-radar {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.5); opacity: 0.7; }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes pulse-blip {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Deixar o popup com cara de sistema de aviação */
+.leaflet-popup-content-wrapper {
+  background: #111 !important;
+  color: #fff !important;
+  border: 1px solid #00d2ff;
+  font-family: "monospace";
 }
