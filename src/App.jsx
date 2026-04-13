@@ -600,7 +600,7 @@ function App() {
       )
       .catch(() => setMetarOrigem("Erro na Torre"));
 
-    fetch(`https://aerobrif.onrender.com1/api/taf/${origemAtiva}`)
+    fetch(`https://aerobrif.onrender.com/api/taf/${origemAtiva}`)
       .then((res) => res.json())
       .then((data) =>
         setTafOrigem(data.length > 0 ? data[0].rawTAF : "TAF Indisponível"),
@@ -735,7 +735,7 @@ function App() {
             <TileLayer
               key={radarTime}
               url={`https://tilecache.rainviewer.com/v2/radar/${radarTime}/256/{z}/{x}/{y}/4/1_1.png`}
-              opacity={0.8}
+              opacity={0.6}
               zIndex={100}
             />
           )}
