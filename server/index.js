@@ -6,7 +6,11 @@ const axios = require("axios");
 const app = express();
 
 // 🔓 LIBERAÇÃO TOTAL DE PORTÕES (CORS) - Fundamental para Web e Mobile
-app.use(cors());
+app.use(
+  cors({
+    origin: ["https://https://aerobrif.onrender.com"],
+  }),
+);
 
 // 📝 LOGS DE DIAGNÓSTICO (Aparecem no painel do Render)
 console.log(

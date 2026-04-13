@@ -519,6 +519,7 @@ function App() {
   const [radarTime, setRadarTime] = useState(null);
   const [isServerOnline, setIsServerOnline] = useState(false);
   const [weatherType, setWeatherType] = useState("radar"); // 👈 Adicione esta linha
+  const API_URL = import.meta.env.VITE_API_URL;
 
   // Estados do Clima e Avisos
   const [metarOrigem, setMetarOrigem] = useState("Aguardando NOAA...");
