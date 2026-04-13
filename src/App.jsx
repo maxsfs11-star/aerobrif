@@ -637,23 +637,29 @@ function App() {
       .catch(() => setNotamDestino(["❌ Falha ao carregar NOTAMs."]));
   }, [origemAtiva, destinoAtivo]);
 
-  // ☁️ BUSCA HORÁRIO DAS NUVENS (VERSÃO ANTI-ERRO)
+  // ☁️ BUSCA HORÁRIO DAS NUVENS (COM RASTREAMENTO)
   useEffect(() => {
+    console.log("📡 Tentando contato com RainViewer...");
     fetch("https://api.rainviewer.com/public/weather-maps.json")
       .then((res) => res.json())
       .then((data) => {
-        // 🛰️ Tenta pegar satélite infravermelho primeiro
-        const satelliteList = data?.satellite?.infrared;
-        // ⛈️ Se não tiver satélite, tenta a lista do radar
-        const radarList = data?.radar?.past;
+        // Tenta satélite (Nuvens brancas) ou Radar (Chuva colorida)
+        const tempoSat =
+          data?.satellite?.infrared?.[data.satellite.infrared.length - 1]?.time;
+        const tempoRad = data?.radar?.past?.[data.radar.past.length - 1]?.time;
 
-        if (satelliteList && satelliteList.length > 0) {
-          setRadarTime(satelliteList[satelliteList.length - 1].time);
-        } else if (radarList && radarList.length > 0) {
-          setRadarTime(radarList[radarList.length - 1].time);
+        const tempoFinal = tempoSat || tempoRad;
+
+        if (tempoFinal) {
+          setRadarTime(tempoFinal);
+          console.log("✅ Horário capturado:", tempoFinal);
+        } else {
+          console.log(
+            "⚠️ API respondeu, mas as listas de imagens estão vazias.",
+          );
         }
       })
-      .catch((err) => console.log("❌ Erro na API do RainViewer:", err));
+      .catch((err) => console.log("❌ Erro total na API RainViewer:", err));
   }, []);
 
   // ✈️ Radar Online com Check de Conexão
@@ -735,13 +741,12 @@ function App() {
           style={{ height: "100%", width: "100%" }}
           zoomControl={false}
         >
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
 
           {/* Nuvens sobrepostas */}
           {radarTime && (
             <TileLayer
               key={radarTime}
-              // Note que usamos 'satellite' aqui para bater com o INMET
               url={`https://tilecache.rainviewer.com/v2/satellite/${radarTime}/256/{z}/{x}/{y}/2/1_1.png`}
               opacity={0.6}
               zIndex={100}
