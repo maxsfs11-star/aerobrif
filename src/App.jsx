@@ -637,29 +637,29 @@ function App() {
       .catch(() => setNotamDestino(["❌ Falha ao carregar NOTAMs."]));
   }, [origemAtiva, destinoAtivo]);
 
-  // ☁️ BUSCA HORÁRIO DAS NUVENS (COM RASTREAMENTO)
+  // ☁️ BUSCA HORÁRIO DAS NUVENS (VERSÃO REVISADA)
   useEffect(() => {
-    console.log("📡 Tentando contato com RainViewer...");
     fetch("https://api.rainviewer.com/public/weather-maps.json")
       .then((res) => res.json())
       .then((data) => {
-        // Tenta satélite (Nuvens brancas) ou Radar (Chuva colorida)
-        const tempoSat =
-          data?.satellite?.infrared?.[data.satellite.infrared.length - 1]?.time;
-        const tempoRad = data?.radar?.past?.[data.radar.past.length - 1]?.time;
+        // 🛰️ Tenta capturar o Satélite (Nuvens de calor, estilo INMET)
+        const sat = data?.satellite?.infrared;
+        // ⛈️ Tenta capturar o Radar (Chuva/Tempestade)
+        const rad = data?.radar?.past;
 
-        const tempoFinal = tempoSat || tempoRad;
-
-        if (tempoFinal) {
-          setRadarTime(tempoFinal);
-          console.log("✅ Horário capturado:", tempoFinal);
+        if (sat && sat.length > 0) {
+          setRadarTime(sat[sat.length - 1].time);
+          console.log("✅ Satélite detectado:", sat[sat.length - 1].time);
+        } else if (rad && rad.length > 0) {
+          setRadarTime(rad[rad.length - 1].time);
+          console.log("✅ Radar detectado:", rad[rad.length - 1].time);
         } else {
-          console.log(
-            "⚠️ API respondeu, mas as listas de imagens estão vazias.",
-          );
+          console.log("⚠️ Nenhuma imagem disponível no RainViewer agora.");
         }
       })
-      .catch((err) => console.log("❌ Erro total na API RainViewer:", err));
+      .catch((err) =>
+        console.log("❌ Erro na comunicação com RainViewer:", err),
+      );
   }, []);
 
   // ✈️ Radar Online com Check de Conexão
@@ -748,7 +748,7 @@ function App() {
             <TileLayer
               key={radarTime}
               url={`https://tilecache.rainviewer.com/v2/satellite/${radarTime}/256/{z}/{x}/{y}/2/1_1.png`}
-              opacity={0.6}
+              opacity={0.8}
               zIndex={100}
             />
           )}
