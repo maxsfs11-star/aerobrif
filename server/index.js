@@ -8,7 +8,7 @@ const app = express();
 // 🔓 LIBERAÇÃO TOTAL DE PORTÕES (CORS) - Fundamental para Web e Mobile
 app.use(
   cors({
-    origin: ["https://https://aerobrif.onrender.com"],
+    origin: ["https://aerobrif.onrender.com"],
   }),
 );
 
