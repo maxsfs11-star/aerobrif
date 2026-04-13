@@ -170,6 +170,7 @@
   box-shadow: 0 0 12px var(--cyan-neon);
   animation: piscar 1.5s infinite;
 }
+
 @keyframes piscar {
   0% {
     opacity: 1;
@@ -332,6 +333,7 @@
   border-radius: 50%;
   box-shadow: 0 0 10px #00ff00;
   position: relative;
+  border: 2px solid white;
 }
 
 /* 📡 O Efeito de Pulsação (O "Ping" do Radar) */

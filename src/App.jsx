@@ -755,8 +755,8 @@ function App() {
             <TileLayer
               key={`${weatherType}-${radarTime}`}
               // Usando o esquema de cores '0' (original) que é o mais compatível para evitar quadrados
-              url={`https://tilecache.rainviewer.com/v2/${weatherType}/${radarTime}/256/{z}/{x}/{y}/0/1_1.png`}
-              opacity={0.6}
+              url={`https://tilecache.rainviewer.com/v2/${weatherType}/${radarTime}/256/{z}/{x}/{y}/8/1_1.png`}
+              opacity={1.6}
               zIndex={100}
             />
           )}

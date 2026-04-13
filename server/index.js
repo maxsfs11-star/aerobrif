@@ -1,4 +1,14 @@
 require("dotenv").config();
+
+console.log(
+  "CHAVE CHECKWX:",
+  process.env.CHECKWX_KEY ? "Configurada ✅" : "Vazia ❌",
+);
+console.log(
+  "USUÁRIO OPENSKY:",
+  process.env.OPENSKY_USER ? "Configurado ✅" : "Vazio ❌",
+);
+
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
