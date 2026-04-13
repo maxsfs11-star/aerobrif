@@ -642,19 +642,23 @@ function App() {
     fetch("https://api.rainviewer.com/public/weather-maps.json")
       .then((res) => res.json())
       .then((data) => {
-        // Tenta satélite primeiro, se não tiver, vai de radar
-        if (data?.satellite?.infrared) {
-          setRadarTime(
-            data.satellite.infrared[data.satellite.infrared.length - 1].time,
-          );
+        // 🛰️ Tenta satélite primeiro (nuvens brancas)
+        const sat = data?.satellite?.infrared;
+        const rad = data?.radar?.past;
+
+        if (sat && sat.length > 0) {
+          setRadarTime(sat[sat.length - 1].time);
           setWeatherType("satellite");
-        } else if (data?.radar?.past) {
-          setRadarTime(data.radar.past[data.radar.past.length - 1].time);
+          console.log("🛰️ Modo: Satélite (Nuvens)");
+        } else if (rad && rad.length > 0) {
+          setRadarTime(rad[rad.length - 1].time);
           setWeatherType("radar");
+          console.log("⛈️ Modo: Radar (Chuva)");
         }
       })
-      .catch((err) => console.log("Erro Nuvens", err));
+      .catch((err) => console.log("❌ Erro ao buscar clima:", err));
   }, []);
+
   // ✈️ Radar Online com Check de Conexão
   useEffect(() => {
     const bRadar = () => {
@@ -739,8 +743,7 @@ function App() {
           {/* Nuvens sobrepostas */}
           {radarTime && (
             <TileLayer
-              key={`${weatherType}-${radarTime}`}
-              // Aqui o link muda sozinho entre satellite ou radar 🛰️⛈️
+              key={`${weatherType}-${radarTime}`} // 👈 O segredo: o 'key' força o mapa a redesenhar
               url={`https://tilecache.rainviewer.com/v2/${weatherType}/${radarTime}/256/{z}/{x}/{y}/2/1_1.png`}
               opacity={0.7}
               zIndex={100}
