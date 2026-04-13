@@ -518,14 +518,15 @@ function App() {
   const [cidadesSobrevoo, setCidadesSobrevoo] = useState({});
   const [radarTime, setRadarTime] = useState(null);
   const [isServerOnline, setIsServerOnline] = useState(false);
-  const [weatherType, setWeatherType] = useState("radar");
+  const [weatherType, setWeatherType] = useState("radar"); // 👈 Adicione esta linha
 
-  const [metarOrigem, setMetarOrigem] = useState("Aguardando...");
-  const [metarDestino, setMetarDestino] = useState("Aguardando...");
-  const [tafOrigem, setTafOrigem] = useState("Aguardando...");
-  const [tafDestino, setTafDestino] = useState("Aguardando...");
-  const [notamOrigem, setNotamOrigem] = useState(["Aguardando..."]);
-  const [notamDestino, setNotamDestino] = useState(["Aguardando..."]);
+  // Estados do Clima e Avisos
+  const [metarOrigem, setMetarOrigem] = useState("Aguardando NOAA...");
+  const [metarDestino, setMetarDestino] = useState("Aguardando NOAA...");
+  const [tafOrigem, setTafOrigem] = useState("Aguardando NOAA...");
+  const [tafDestino, setTafDestino] = useState("Aguardando NOAA...");
+  const [notamOrigem, setNotamOrigem] = useState(["Aguardando NOTAM..."]);
+  const [notamDestino, setNotamDestino] = useState(["Aguardando NOTAM..."]);
 
   const getHoraLocal = (icao) => {
     const aero = gpsAeroportos[icao];
@@ -541,8 +542,13 @@ function App() {
   const buscarIcao = (texto) => {
     if (!texto) return "";
     const busca = texto.toUpperCase().trim();
+
+    // 1. Verifica se digitou o ICAO direto
     if (gpsAeroportos[busca]) return busca;
+
+    // 2. Normaliza o texto (remove acentos) para busca por nome
     const buscaLimpa = busca.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
     for (const icao in gpsAeroportos) {
       const cidadeLimpa = gpsAeroportos[icao].cidade
         .toUpperCase()
@@ -552,8 +558,10 @@ function App() {
         .toUpperCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
-      if (cidadeLimpa.includes(buscaLimpa) || nomeLimpo.includes(buscaLimpa))
+
+      if (cidadeLimpa.includes(buscaLimpa) || nomeLimpo.includes(buscaLimpa)) {
         return icao;
+      }
     }
     return "";
   };
@@ -574,6 +582,8 @@ function App() {
 
   useEffect(() => {
     if (!origemAtiva || !destinoAtivo) return;
+
+    // ---- BUSCANDO ORIGEM ----
     fetch(`https://aerobrif.onrender.com/api/metar/${origemAtiva}`)
       .then((res) => res.json())
       .then((data) =>
@@ -590,6 +600,7 @@ function App() {
 
     fetch(`https://aerobrif.onrender.com/api/notam/${origemAtiva}`)
       .then((res) => res.json())
+
       .then((data) => {
         if (Array.isArray(data)) {
           const apenasTextos = data.map((item) =>
@@ -600,9 +611,11 @@ function App() {
               ? apenasTextos
               : ["✅ Nenhum NOTAM crítico."],
           );
-        } else setNotamOrigem(["✅ Nenhum NOTAM crítico."]);
+        } else {
+          setNotamOrigem(["✅ Nenhum NOTAM crítico."]);
+        }
       });
-
+    // ---- BUSCANDO DESTINO ----
     fetch(`https://aerobrif.onrender.com/api/metar/${destinoAtivo}`)
       .then((res) => res.json())
       .then((data) =>
@@ -619,18 +632,9 @@ function App() {
 
     fetch(`https://aerobrif.onrender.com/api/notam/${destinoAtivo}`)
       .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          const apenasTextos = data.map((item) =>
-            typeof item === "string" ? item : JSON.stringify(item),
-          );
-          setNotamDestino(
-            apenasTextos.length > 0
-              ? apenasTextos
-              : ["✅ Nenhum NOTAM crítico."],
-          );
-        } else setNotamDestino(["✅ Nenhum NOTAM crítico."]);
-      })
+      .then((data) =>
+        setNotamDestino(data.length > 0 ? data : ["✅ Nenhum NOTAM crítico."]),
+      )
       .catch(() => setNotamDestino(["❌ Falha ao carregar NOTAMs."]));
   }, [origemAtiva, destinoAtivo]);
 
@@ -638,19 +642,24 @@ function App() {
     fetch("https://api.rainviewer.com/public/weather-maps.json")
       .then((res) => res.json())
       .then((data) => {
+        // 🛰️ Tenta satélite primeiro (nuvens brancas)
         const sat = data?.satellite?.infrared;
         const rad = data?.radar?.past;
+
         if (sat && sat.length > 0) {
           setRadarTime(sat[sat.length - 1].time);
           setWeatherType("satellite");
+          console.log("🛰️ Modo: Satélite (Nuvens)");
         } else if (rad && rad.length > 0) {
           setRadarTime(rad[rad.length - 1].time);
           setWeatherType("radar");
+          console.log("⛈️ Modo: Radar (Chuva)");
         }
       })
-      .catch((err) => console.log("❌ Erro clima:", err));
+      .catch((err) => console.log("❌ Erro ao buscar clima:", err));
   }, []);
 
+  // ✈️ Radar Online com Check de Conexão
   useEffect(() => {
     const bRadar = () => {
       fetch("https://aerobrif.onrender.com/api/radar")
@@ -660,15 +669,20 @@ function App() {
         })
         .then((data) => {
           setRadar(data);
-          setIsServerOnline(true);
+          setIsServerOnline(true); // ✅ Resposta chegou, estamos online!
         })
-        .catch(() => setIsServerOnline(false));
+        .catch(() => {
+          setIsServerOnline(false); // ❌ Falha na comunicação, servidor offline!
+        });
     };
+
     bRadar();
+    // Diminuí para 30 segundos para o status ser mais rápido se a torre cair
     const timer = setInterval(bRadar, 30000);
     return () => clearInterval(timer);
   }, []);
 
+  // 🔎 Função Mágica: Busca a cidade pelo satélite
   const descobrirCidade = async (lat, lng, vooId) => {
     setCidadesSobrevoo((prev) => ({
       ...prev,
@@ -686,15 +700,18 @@ function App() {
         data.address.state ||
         "Área Oceânica/Remota";
       setCidadesSobrevoo((prev) => ({ ...prev, [vooId]: local }));
-    } catch {
+    } catch (err) {
+      console.error("Erro ao buscar cidade:", err);
       setCidadesSobrevoo((prev) => ({ ...prev, [vooId]: "Desconhecido" }));
     }
   };
 
+  // Cálculos de Rota e Vento
   let traves = 0,
-    corAlerta = "#444",
-    dist = 0,
+    corAlerta = "#444";
+  let dist = 0,
     tempo = "--h --m";
+
   if (gpsAeroportos[origemAtiva] && gpsAeroportos[destinoAtivo]) {
     dist = Math.round(
       calcularDistanciaNM(
@@ -705,6 +722,7 @@ function App() {
       ),
     );
     tempo = calcularTempoVoo(dist);
+
     const diff = Math.abs(140 - gpsAeroportos[destinoAtivo].pista);
     traves = Math.round(20 * Math.sin((diff * Math.PI) / 180));
     if (traves > 15) corAlerta = "#ff4d4d";
@@ -717,18 +735,18 @@ function App() {
         <MapContainer
           center={[-23.5505, -46.6333]}
           zoom={6}
-          maxZoom={22} /* 👈 Correção do Zoom aqui! */
+          maxZoom={22} // Libera o zoom máximo sem quebrar
           style={{ height: "100%", width: "100%" }}
           zoomControl={false}
         >
-          {/* 👈 Correção do Zoom Base aqui para evitar o erro cinza! */}
+          {/* Mapa base escuro - Agora com o limite de fotos reais ajustado (maxNativeZoom) */}
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             maxZoom={22}
             maxNativeZoom={19}
           />
 
-          {/* 🛑 O SEGREDO DO CLIMA: Se for 'satellite', exige a cor 0. Se for 'radar', usa a 8 */}
+          {/* O SEGREDO DO CLIMA: Se for Satélite (nuvem) usa o esquema 0. Se for Radar (chuva), usa o 8. */}
           {radarTime && weatherType && (
             <TileLayer
               key={`${weatherType}-${radarTime}`}
@@ -738,6 +756,7 @@ function App() {
             />
           )}
 
+          {/* Resto dos marcadores (Linha, Origem, Destino) */}
           {gpsAeroportos[origemAtiva] && gpsAeroportos[destinoAtivo] && (
             <>
               <Polyline
@@ -768,6 +787,7 @@ function App() {
             </>
           )}
 
+          {/* Aviões do Radar */}
           {radar.map((aviao) => (
             <Marker
               key={aviao.id}
@@ -789,8 +809,7 @@ function App() {
                   💨 <b>Velocidade:</b> {aviao.velocidade} kt
                 </div>
                 <div style={{ marginTop: "5px", color: "#0056b3" }}>
-                  📍 <b>Local:</b>{" "}
-                  {cidadesSobrevoo[aviao.id] || "Clique para rastrear..."}
+                  📍 <b>Local:</b> {cidadesSobrevoo[aviao.id] || "Buscando..."}
                 </div>
               </Popup>
             </Marker>
@@ -803,13 +822,11 @@ function App() {
         <input
           value={origemInput}
           onChange={(e) => setOrigemInput(e.target.value)}
-          placeholder="SBSP"
         />
         <span style={{ color: "#fff" }}>✈️</span>
         <input
           value={destinoInput}
           onChange={(e) => setDestinoInput(e.target.value)}
-          placeholder="SBRJ"
         />
         <button onClick={handleCarregarRota}>CARREGAR ROTA</button>
       </div>
@@ -820,6 +837,7 @@ function App() {
           <span>🛫 ORIGEM: {origemAtiva}</span>
           <span>🕒 LOCAL: {getHoraLocal(origemAtiva)}</span>
         </div>
+
         <div className="card-clarity">
           <h4 style={{ marginBottom: "10px" }}>
             🌦️ METAR & TAF OFICIAL (NOAA)
@@ -855,6 +873,107 @@ function App() {
           </p>
         </div>
 
+        <div className="card-clarity">
+          <h4>CONDIÇÕES LOCAIS</h4>
+          <p>
+            🌬️ <b>Vento:</b> 120° / 15kt
+          </p>
+          <p>
+            🌡️ <b>Clima:</b> Parcialmente Nublado (28°C)
+          </p>
+          <p>
+            ⚖️ <b>Pressão:</b> 1012 hPa
+          </p>
+          <p>
+            ☀️ <b>Sol:</b> Nascer 06:12 / Pôr 18:45
+          </p>
+        </div>
+
+        <div
+          className="card-clarity"
+          style={{ borderTopColor: "var(--cyan-neon)" }}
+        >
+          <h4>Raio-X da Infraestrutura</h4>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "10px" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <p>
+                🏔️ <b>Altitude:</b>
+              </p>
+              <span style={{ color: "var(--cyan-neon)", fontWeight: "bold" }}>
+                {gpsAeroportos[origemAtiva]?.elevacao} ft
+              </span>
+            </div>
+            <div style={{ marginTop: "5px" }}>
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#aaa",
+                  marginBottom: "5px",
+                }}
+              >
+                COMPRIMENTO DA PISTA:
+              </p>
+              <div
+                style={{
+                  width: "100%",
+                  height: "10px",
+                  background: "#222",
+                  borderRadius: "5px",
+                  position: "relative",
+                  overflow: "hidden",
+                  border: "1px solid #444",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${(gpsAeroportos[origemAtiva]?.comprimento / 4000) * 100}%`,
+                    height: "100%",
+                    background:
+                      gpsAeroportos[origemAtiva]?.comprimento < 1500
+                        ? "var(--alert-red)"
+                        : "var(--cyan-neon)",
+                    boxShadow: "0 0 10px var(--cyan-neon)",
+                  }}
+                ></div>
+              </div>
+              <p
+                style={{
+                  textAlign: "right",
+                  fontSize: "0.8rem",
+                  marginTop: "5px",
+                }}
+              >
+                <b>{gpsAeroportos[origemAtiva]?.comprimento} metros</b>
+              </p>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+                marginTop: "5px",
+                borderTop: "1px solid #333",
+                paddingTop: "10px",
+              }}
+            >
+              <p>
+                🎙️ <b>TWR:</b> {gpsAeroportos[origemAtiva]?.freqTorre}
+              </p>
+              <p>
+                🚜 <b>GND:</b> {gpsAeroportos[origemAtiva]?.freqSolo}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="card-clarity" style={{ borderTopColor: "#FFD700" }}>
           <h4 style={{ color: "#FFD700" }}>AVISOS (NOTAM)</h4>
           <div
@@ -879,6 +998,15 @@ function App() {
             ))}
           </div>
         </div>
+
+        <a
+          href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${origemAtiva}`}
+          target="_blank"
+          rel="noreferrer"
+          className="link-aisweb"
+        >
+          📚 BAIXAR CARTAS (AISWEB) ↗
+        </a>
       </div>
 
       {/* 🛬 PAINEL DIREITO (DESTINO) */}
@@ -887,6 +1015,7 @@ function App() {
           <span>🛬 DESTINO: {destinoAtivo}</span>
           <span>🕒 LOCAL: {getHoraLocal(destinoAtivo)}</span>
         </div>
+
         <div className="card-clarity">
           <h4 style={{ marginBottom: "10px" }}>
             🌦️ METAR & TAF OFICIAL (NOAA)
@@ -927,6 +1056,9 @@ function App() {
             VENTO E TRAVÉS DA PISTA
           </h4>
           <p>
+            🌬️ <b>Direção/Força:</b> 140° a 20kt
+          </p>
+          <p>
             ⚠️ <b>Posição do Través:</b>{" "}
             <span
               style={{ color: corAlerta, fontWeight: "bold", fontSize: "1rem" }}
@@ -934,6 +1066,91 @@ function App() {
               {traves} kt
             </span>
           </p>
+        </div>
+
+        <div
+          className="card-clarity"
+          style={{ borderTopColor: "var(--cyan-neon)" }}
+        >
+          <h4>Raio-X da Infraestrutura</h4>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "10px" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <p>
+                🏔️ <b>Altitude:</b>
+              </p>
+              <span style={{ color: "var(--cyan-neon)", fontWeight: "bold" }}>
+                {gpsAeroportos[destinoAtivo]?.elevacao} ft
+              </span>
+            </div>
+            <div style={{ marginTop: "5px" }}>
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#aaa",
+                  marginBottom: "5px",
+                }}
+              >
+                COMPRIMENTO DA PISTA:
+              </p>
+              <div
+                style={{
+                  width: "100%",
+                  height: "10px",
+                  background: "#222",
+                  borderRadius: "5px",
+                  position: "relative",
+                  overflow: "hidden",
+                  border: "1px solid #444",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${(gpsAeroportos[destinoAtivo]?.comprimento / 4000) * 100}%`,
+                    height: "100%",
+                    background:
+                      gpsAeroportos[destinoAtivo]?.comprimento < 1500
+                        ? "var(--alert-red)"
+                        : "var(--cyan-neon)",
+                    boxShadow: "0 0 10px var(--cyan-neon)",
+                  }}
+                ></div>
+              </div>
+              <p
+                style={{
+                  textAlign: "right",
+                  fontSize: "0.8rem",
+                  marginTop: "5px",
+                }}
+              >
+                <b>{gpsAeroportos[destinoAtivo]?.comprimento} metros</b>
+              </p>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+                marginTop: "5px",
+                borderTop: "1px solid #333",
+                paddingTop: "10px",
+              }}
+            >
+              <p>
+                🎙️ <b>TWR:</b> {gpsAeroportos[destinoAtivo]?.freqTorre}
+              </p>
+              <p>
+                🚜 <b>GND:</b> {gpsAeroportos[destinoAtivo]?.freqSolo}
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="card-clarity" style={{ borderTopColor: "#FFD700" }}>
@@ -960,9 +1177,18 @@ function App() {
             ))}
           </div>
         </div>
+
+        <a
+          href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${destinoAtivo}`}
+          target="_blank"
+          rel="noreferrer"
+          className="link-aisweb"
+        >
+          📚 BAIXAR CARTAS (AISWEB) ↗
+        </a>
       </div>
 
-      {/* ⏰ FOOTER */}
+      {/* ⏰ FOOTER CENTRAL */}
       <div className="footer-clarity">
         <span>
           UTC:{" "}
@@ -979,6 +1205,20 @@ function App() {
         </span>
         <span style={{ color: "#555" }}>|</span>
         <span>
+          ⏱️ ETE:{" "}
+          <b style={{ color: "#00d2ff", fontSize: "1.1rem" }}>
+            {dist ? tempo : "---"}
+          </b>
+        </span>
+        <span>
+          <span
+            style={{
+              color: isServerOnline ? "#00ff00" : "#ff4d4d",
+              marginRight: "8px",
+            }}
+          >
+            ●
+          </span>
           <b style={{ color: isServerOnline ? "#00ff00" : "#ff4d4d" }}>
             RADAR {isServerOnline ? "ONLINE" : "OFFLINE"}
           </b>
