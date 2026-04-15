@@ -72,7 +72,7 @@ app.get("/api/taf/:icao", async (req, res) => {
 app.get("/api/notam/:icao", async (req, res) => {
   try {
     const response = await axios.get(
-      `https://api-redemet.decea.mil.br/mensagens/notam/${req.params.icao}?apiKey=${process.env.REDEMET_KEY}`,
+      `https://api-redemet.decea.mil.br/mensagens/notam/${req.params.icao}?api_Key=${process.env.REDEMET_KEY}`,
       { timeout: 5000 },
     );
 
