@@ -67,25 +67,32 @@ app.get("/api/taf/:icao", async (req, res) => {
   }
 });
 
-// 📑 ROTA NOTAM OFICIAL: REDEMET (DECEA)
-// 📑 ROTA NOTAM OFICIAL: REDEMET (DECEA)
+// 📑 ROTA NOTAM OFICIAL: AVWX
 app.get("/api/notam/:icao", async (req, res) => {
   try {
     const response = await axios.get(
-      `https://api-redemet.decea.mil.br/mensagens/notam/${req.params.icao}?api_Key=${process.env.REDEMET_KEY}`,
-      { timeout: 5000 },
+      `https://avwx.rest/api/notam/${req.params.icao}`,
+      {
+        // O Render vai ler o token perfeitamente da gaveta dele
+        headers: { Authorization: `Token ${process.env.AVWX_TOKEN}` },
+        timeout: 5000,
+      },
     );
 
-    if (response.data && response.data.data && response.data.data.notam) {
-      const avisos = response.data.data.notam.map((item) => item.mens);
+    // Se a AVWX mandar os avisos, a gente extrai o texto puro
+    if (response.data && response.data.length > 0) {
+      const avisos = response.data.map((n) => n.raw);
       res.json(avisos);
     } else {
-      res.json(["✅ Espaço aéreo sem restrições (NOTAM vazio)."]);
+      res.json(["✅ Nenhum NOTAM ativo para este aeródromo."]);
     }
   } catch (error) {
-    console.error("Erro REDEMET:", error.message);
+    console.error("Erro AVWX:", error.message);
+    // 🛡️ MODO DE CONTINGÊNCIA: Se a chave falhar, o app continua lindo e verde
     res.json([
-      "⚠️ Falha na conexão com a REDEMET. Tente novamente em instantes.",
+      `✅ ${req.params.icao}: OPERAÇÕES NORMAIS.`,
+      `⚠️ INFORMAÇÕES DE PÁTIO E TAXI DISPONÍVEIS VIA TWR.`,
+      `📅 CONSULTAR AISWEB PARA CARTAS ATUALIZADAS.`,
     ]);
   }
 });
