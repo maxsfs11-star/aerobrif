@@ -10,7 +10,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./App.css";
-import { gpsAeroportos } from "./aeroportos";
+import { gpsAeroportos } from "./Aeroportos";
 
 // 🟢 Ícone de Avião (Radar)
 const blipIcon = L.divIcon({
