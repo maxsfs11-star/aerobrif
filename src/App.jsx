@@ -504,6 +504,7 @@ const calcularDistanciaNM = (lat1, lon1, lat2, lon2) => {
 };
 
 const calcularTempoVoo = (distanciaNM) => {
+  if (!distanciaNM || distanciaNM <= 0) return "--h --m";
   const tempoHoras = distanciaNM / 450;
   const horas = Math.floor(tempoHoras);
   const minutos = Math.round((tempoHoras - horas) * 60);
@@ -517,9 +518,7 @@ function App() {
   const [destinoAtivo, setDestinoAtivo] = useState("");
   const [radar, setRadar] = useState([]);
   const [cidadesSobrevoo, setCidadesSobrevoo] = useState({});
-  const [radarTime, setRadarTime] = useState(null);
   const [isServerOnline, setIsServerOnline] = useState(false);
-  const [weatherType, setWeatherType] = useState("radar"); // 👈 Adicione esta linha
 
   // Estados do Clima e Avisos
   const [metarOrigem, setMetarOrigem] = useState("Aguardando NOAA...");
@@ -726,14 +725,11 @@ function App() {
             maxNativeZoom={19}
           />
 
-          {/* 🌩️ NOVA CAMADA DE NUVENS (Satélite GOES - Tempo Real e Sem Bugs) */}
-          <WMSTileLayer
-            url="https://mesonet.agron.iastate.edu/cgi-bin/wms/goes/global.cgi"
-            layers="goes_global_ir"
-            format="image/png"
-            transparent={true}
-            opacity={0.5} // Ajuste a transparência das nuvens aqui
-            zIndex={100}
+          {/* ⛈️ CAMADA DE CHUVA (OpenWeatherMap - Direta e Limpa) */}
+          <TileLayer
+            url="https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=e6fd4ff8d4378e1a25f023b7a22f2f97"
+            opacity={0.3}
+            zIndex={1}
           />
 
           {/* Resto dos marcadores (Linha, Origem, Destino) */}

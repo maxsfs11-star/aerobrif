@@ -1,8 +1,14 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 
 const app = express();
+
+console.log(
+  "CHAVE REDEMET:",
+  process.env.REDEMET_KEY ? "Detectada ✅" : "Não encontrada ❌",
+);
 
 // 🔓 CORS 100% Livre
 app.use(cors());
@@ -61,27 +67,25 @@ app.get("/api/taf/:icao", async (req, res) => {
   }
 });
 
-/// ✈️ ROTA NOTAM COM A NOVA API (AVWX)
+// 📑 ROTA NOTAM OFICIAL: REDEMET (DECEA)
+// 📑 ROTA NOTAM OFICIAL: REDEMET (DECEA)
 app.get("/api/notam/:icao", async (req, res) => {
   try {
     const response = await axios.get(
-      `https://avwx.rest/api/notam/${req.params.icao}`,
-      {
-        headers: { Authorization: `Token ${process.env.AVWX_TOKEN}` },
-        timeout: 5000,
-      },
+      `https://api-redemet.decea.mil.br/mensagens/notam/${req.params.icao}?apiKey=${process.env.REDEMET_KEY}`,
+      { timeout: 5000 },
     );
 
-    // A AVWX manda os dados limpos, a gente só puxa o texto (raw)
-    const notams = response.data.map((n) => n.raw);
-
-    res.json(
-      notams.length > 0 ? notams : ["✅ Nenhum NOTAM ativo no momento."],
-    );
+    if (response.data && response.data.data && response.data.data.notam) {
+      const avisos = response.data.data.notam.map((item) => item.mens);
+      res.json(avisos);
+    } else {
+      res.json(["✅ Espaço aéreo sem restrições (NOTAM vazio)."]);
+    }
   } catch (error) {
-    console.error("Erro AVWX:", error.message);
+    console.error("Erro REDEMET:", error.message);
     res.json([
-      "⚠️ Falha ao buscar NOTAM. Verifique seu token da AVWX no Render.",
+      "⚠️ Falha na conexão com a REDEMET. Tente novamente em instantes.",
     ]);
   }
 });
