@@ -400,3 +400,316 @@
   border: 1px solid #00d2ff;
   font-family: "monospace";
 }
+
+/* --- BOTÃO DE CARTAS --- */
+.btn-cartas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+  padding: 12px 20px;
+  background-color: #1a1a24; /* Fundo escuro premium */
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: bold;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.btn-cartas:hover {
+  background-color: #222230;
+  border-color: var(--cyan-neon, #00d2ff); /* Acende a borda em ciano */
+  color: var(--cyan-neon, #00d2ff);
+  transform: translateY(-2px); /* Dá um pulinho pra cima */
+  box-shadow: 0 6px 12px rgba(0, 210, 255, 0.2); /* Brilho neon */
+}
+
+/* =========================================
+   TELA: SALA DE CARTAS (Briefing Room)
+   ========================================= */
+
+/* O fundo escuro da tela inteira, com um leve brilho no centro */
+.sala-cartas-container {
+  background-color: #050508;
+  background-image: radial-gradient(circle at 50% 20%, #1a1a2e 0%, #050508 70%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  color: white;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* O cartão principal com efeito de vidro (Glassmorphism) */
+.sala-cartas-content {
+  background: rgba(20, 20, 30, 0.7);
+  border: 1px solid #2a2a3a;
+  border-radius: 16px;
+  padding: 50px;
+  max-width: 700px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(12px); /* Borra o fundo atrás do card */
+}
+
+/* Título e Linha divisória */
+.sala-cartas-titulo {
+  color: #fff;
+  font-size: 1.8rem;
+  margin: 0;
+  letter-spacing: 2px;
+}
+
+.sala-cartas-titulo span {
+  color: var(--cyan-neon, #00d2ff);
+  font-weight: 300;
+}
+
+.sala-cartas-linha {
+  border: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--cyan-neon, #00d2ff) 0%,
+    transparent 80%
+  );
+  margin: 20px 0 40px 0;
+}
+
+/* Sigla do Aeroporto e Cidade */
+.sala-cartas-header {
+  text-align: left;
+  margin-bottom: 40px;
+}
+
+.sala-cartas-icao {
+  font-size: 5rem;
+  margin: 0;
+  color: #fff;
+  text-shadow: 0 0 30px rgba(0, 210, 255, 0.4); /* Brilho neon na letra */
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 5px;
+}
+
+.sala-cartas-cidade {
+  color: #a0a0b5;
+  font-size: 1.5rem;
+  margin-top: 10px;
+  font-weight: 400;
+}
+
+/* Caixa de Aviso do DECEA */
+.sala-cartas-box {
+  background: #0f0f16;
+  border-left: 4px solid var(--cyan-neon, #00d2ff);
+  padding: 30px;
+  border-radius: 0 12px 12px 0;
+}
+
+.sala-cartas-box h3 {
+  color: #ffd700; /* Amarelo de alerta sutil */
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+  letter-spacing: 1px;
+}
+
+.sala-cartas-box p {
+  color: #b0b0c0;
+  line-height: 1.8;
+  font-size: 1.1rem;
+  margin-bottom: 30px;
+}
+
+/* Modificador do botão de cartas para ficar gigante nessa tela */
+.btn-cartas-destaque {
+  font-size: 1.3rem;
+  padding: 18px 30px;
+  width: 100%; /* Faz o botão esticar de ponta a ponta */
+  box-sizing: border-box;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* --- ANIMAÇÕES --- */
+
+/* Keyframes para Fade-in sutil + subida rápida */
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Classe utilitária para Fade-in */
+.fade-in {
+  animation: fadeInSlide 1s ease-out forwards;
+  opacity: 0; /* Começa invisível até a animação rodar */
+}
+
+/* Keyframes para Neon Pulsante sutil */
+@keyframes pulsatingNeon {
+  0% {
+    text-shadow: 0 0 10px rgba(0, 210, 255, 0.4);
+  }
+  50% {
+    text-shadow:
+      0 0 20px rgba(0, 210, 255, 0.7),
+      0 0 5px rgba(0, 210, 255, 0.5); /* Aumenta brilho sutilmente */
+  }
+  100% {
+    text-shadow: 0 0 10px rgba(0, 210, 255, 0.4);
+  }
+}
+
+/* Atualize a classe existente no seu CSS */
+.sala-cartas-icao {
+  /* ... mantenha os outros estilos existentes ... */
+  text-shadow: 0 0 10px rgba(0, 210, 255, 0.4); /* Garanta que o estilo base esteja aqui */
+  animation: pulsatingNeon 3s ease-in-out infinite; /* Pulsar sutil infinito */
+}
+
+/* =========================================
+   TELA DE LOADING (Avião)
+   ========================================= */
+.loading-cartas-container {
+  background-color: #050508;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: var(--cyan-neon, #00d2ff);
+  font-family: "Segoe UI", sans-serif;
+}
+
+.aviao-loading {
+  font-size: 5rem;
+  /* Faz o avião balançar para cima e para baixo suavemente */
+  animation: vooFlutuante 1.5s ease-in-out infinite alternate;
+}
+
+.loading-texto {
+  margin-top: 30px;
+  font-size: 1.2rem;
+  letter-spacing: 4px;
+  font-weight: 300;
+  animation: piscarSuave 1s infinite alternate;
+}
+
+/* Barra de progresso vazia */
+.loading-barra {
+  width: 250px;
+  height: 2px;
+  background: #222;
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+/* A tinta azul enchendo a barra */
+.loading-progresso {
+  width: 0%;
+  height: 100%;
+  background: var(--cyan-neon, #00d2ff);
+  box-shadow: 0 0 10px var(--cyan-neon, #00d2ff);
+  animation: encherBarra 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* --- KEYFRAMES DO LOADING --- */
+@keyframes vooFlutuante {
+  0% {
+    transform: translateY(15px) rotate(-5deg);
+  }
+  100% {
+    transform: translateY(-15px) rotate(5deg);
+  }
+}
+
+@keyframes piscarSuave {
+  0% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes encherBarra {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+/* =========================================
+   ANIMAÇÃO DO RADAR (Zero Custo!)
+   ========================================= */
+.radar-box {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 2px solid var(--cyan-neon, #00d2ff);
+  background: rgba(0, 210, 255, 0.05); /* Fundo bem fraquinho */
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(0, 210, 255, 0.2);
+  margin-bottom: 20px;
+}
+
+/* As linhas cruzadas do meio do radar */
+.radar-box::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(0, 210, 255, 0.4);
+}
+.radar-box::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(0, 210, 255, 0.4);
+}
+
+/* A varredura que fica girando */
+.radar-sweep {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 50%;
+  /* Degradê que imita a luz do radar */
+  background: conic-gradient(
+    from 90deg,
+    transparent 0%,
+    rgba(0, 210, 255, 0.6) 100%
+  );
+  transform-origin: bottom left;
+  animation: radarGirar 2s linear infinite;
+}
+
+@keyframes radarGirar {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

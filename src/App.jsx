@@ -61,7 +61,71 @@ const calcularTempoVoo = (distanciaNM) => {
   return `${horas}h ${minutos < 10 ? "0" : ""}${minutos}m`;
 };
 
+// 🧠 MÁQUINA DE DECODIFICAÇÃO DE METAR
+const decodificarMetar = (metar) => {
+  if (!metar || metar.includes("Indisponível") || metar === "Buscando...") {
+    return {
+      vento: "---",
+      clima: "Aguardando...",
+      pressao: "---",
+      temperatura: "---",
+    };
+  }
+
+  // 1. Extrair Vento (Ex: 18007KT, VRB05KT, 12015G25KT)
+  let ventoStr = "---";
+  const ventoMatch = metar.match(/(VRB|\d{3})(\d{2,3})(?:G(\d{2,3}))?KT/);
+  if (ventoMatch) {
+    const dir = ventoMatch[1] === "VRB" ? "Variável" : `${ventoMatch[1]}°`;
+    const vel = parseInt(ventoMatch[2], 10);
+    const rajada = ventoMatch[3]
+      ? ` (Rajadas ${parseInt(ventoMatch[3], 10)}kt)`
+      : "";
+    ventoStr = `${dir} / ${vel}kt${rajada}`;
+  }
+
+  // 2. Extrair Temperatura (Ex: 20/18, M05/M08)
+  let tempStr = "---";
+  const tempMatch = metar.match(/(M?\d{2})\/(M?\d{2})/);
+  if (tempMatch) {
+    const temp = tempMatch[1].replace("M", "-"); // Troca M por sinal de negativo
+    tempStr = `${parseInt(temp, 10)}°C`;
+  }
+
+  // 3. Extrair Pressão/QNH (Ex: Q1016, A2992)
+  let pressaoStr = "---";
+  const qnhMatch = metar.match(/Q(\d{4})/);
+  if (qnhMatch) {
+    pressaoStr = `${parseInt(qnhMatch[1], 10)} hPa`;
+  }
+
+  // 4. Condição Geral / Teto
+  let climaStr = "Visibilidade Normal";
+  if (metar.includes("CAVOK")) climaStr = "Céu Claro (CAVOK)";
+  else if (metar.includes("TSRA") || metar.includes("TS "))
+    climaStr = "Tempestade ⛈️";
+  else if (metar.includes("+RA")) climaStr = "Chuva Forte 🌧️";
+  else if (metar.includes("-RA")) climaStr = "Chuva Leve 🌦️";
+  else if (metar.includes("RA")) climaStr = "Chuva Moderada 🌧️";
+  else if (metar.includes("FG") || metar.includes("BR"))
+    climaStr = "Nevoeiro/Neblina 🌫️";
+  else if (metar.includes("OVC")) climaStr = "Céu Encoberto ☁️";
+  else if (metar.includes("BKN")) climaStr = "Parcialmente Nublado ⛅";
+  else if (metar.includes("SCT") || metar.includes("FEW"))
+    climaStr = "Algumas Nuvens 🌤️";
+
+  return {
+    vento: ventoStr,
+    temperatura: tempStr,
+    pressao: pressaoStr,
+    clima: climaStr,
+  };
+};
+
 function App() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const paginaCartas = urlParams.get("cartas");
+  const [loadingCartas, setLoadingCartas] = useState(!!paginaCartas);
   const [origemInput, setOrigemInput] = useState("");
   const [destinoInput, setDestinoInput] = useState("");
   const [origemAtiva, setOrigemAtiva] = useState("");
@@ -129,6 +193,15 @@ function App() {
     setOrigemAtiva(icaoO);
     setDestinoAtivo(icaoD);
   };
+
+  useEffect(() => {
+    if (paginaCartas) {
+      const timer = setTimeout(() => {
+        setLoadingCartas(false);
+      }, 1500); // 1500 milissegundos = 1.5 segundos
+      return () => clearTimeout(timer);
+    }
+  }, [paginaCartas]);
 
   useEffect(() => {
     if (!origemAtiva || !destinoAtivo) return;
@@ -258,6 +331,112 @@ function App() {
     else if (traves > 10) corAlerta = "#FFD700";
   }
 
+  // Processa o clima em tempo real para os cards resumos
+  const condOrigem = decodificarMetar(metarOrigem);
+  const condDestino = decodificarMetar(metarDestino);
+
+  // 🚀 INTERCEPTADOR DE URL (SALA DE CARTAS E LOADING)
+  // 🚀 INTERCEPTADOR DE URL (SALA DE CARTAS E LOADING)
+  if (paginaCartas) {
+    // 1. TELA DE LOADING (O Avião)
+    // 1. TELA DE LOADING (Radar Customizado - 100% Grátis)
+    if (loadingCartas) {
+      return (
+        <div className="loading-cartas-container">
+          {/* 👇 O NOSSO RADAR CSS 👇 */}
+          <div className="radar-box">
+            <div className="radar-sweep"></div>
+          </div>
+
+          <h2 className="loading-texto">CARREGANDO ...</h2>
+          <div className="loading-barra">
+            <div className="loading-progresso"></div>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. TELA DA SALA DE CARTAS (A página completa)
+    const aero = gpsAeroportos[paginaCartas];
+
+    return (
+      <div className="sala-cartas-container">
+        <div className="sala-cartas-content">
+          <h1 className="sala-cartas-titulo fade-in">
+            AEROBRIF <span>| SALA DE DESPACHO</span>
+          </h1>
+          <hr className="sala-cartas-linha" />
+
+          <div className="sala-cartas-header">
+            <h2 className="sala-cartas-icao">{paginaCartas}</h2>
+            <p className="sala-cartas-cidade fade-in">
+              {aero ? `${aero.nome} - ${aero.cidade}` : "Aeródromo Localizado"}
+            </p>
+          </div>
+
+          <div className="sala-cartas-box">
+            <h3 className="fade-in">⚠️ Repositório Oficial DECEA</h3>
+            <p className="fade-in">
+              Por diretrizes de segurança aeronáutica, as cartas de procedimento
+              (ADC, SID, STAR, IAC) devem ser consultadas diretamente na fonte
+              oficial. Utilize o botão abaixo para abrir o pacote atualizado no
+              AISWEB.
+            </p>
+
+            <a
+              href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${paginaCartas}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-cartas btn-cartas-destaque fade-in"
+            >
+              📚 BAIXAR PACOTE DE CARTAS ↗
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (paginaCartas) {
+    const aero = gpsAeroportos[paginaCartas];
+    return (
+      <div className="sala-cartas-container">
+        <div className="sala-cartas-content">
+          <h1 className="sala-cartas-titulo fade-in">
+            AEROBRIF <span>| SALA DE DESPACHO</span>
+          </h1>
+          <hr className="sala-cartas-linha" />
+
+          <div className="sala-cartas-header">
+            <h2 className="sala-cartas-icao">{paginaCartas}</h2>
+            <p className="sala-cartas-cidade">
+              {aero ? `${aero.nome} - ${aero.cidade}` : "Aeródromo Localizado"}
+            </p>
+          </div>
+
+          <div className="sala-cartas-box">
+            <h3 className="fade-in">⚠️ Repositório Oficial DECEA</h3>
+            <p className="fade-in">
+              Por diretrizes de segurança aeronáutica, as cartas de procedimento
+              (ADC, SID, STAR, IAC) devem ser consultadas diretamente na fonte
+              oficial. Utilize o botão abaixo para abrir o pacote atualizado no
+              AISWEB.
+            </p>
+
+            <a
+              href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${paginaCartas}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-cartas btn-cartas-destaque fade-in"
+            >
+              📚 BAIXAR PACOTE DE CARTAS ↗
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       <div className="mapa-fundo">
@@ -345,6 +524,16 @@ function App() {
 
       <div className="header-clarity">
         <div className="logo">AEROBRIF</div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            marginLeft: "20px",
+            marginRight: "auto",
+          }}
+        ></div>
+
         <input
           value={origemInput}
           onChange={(e) => setOrigemInput(e.target.value)}
@@ -400,18 +589,19 @@ function App() {
         </div>
 
         <div className="card-clarity">
-          <h4>CONDIÇÕES LOCAIS</h4>
+          <h4>CONDIÇÕES LOCAIS ORIGEM</h4>
           <p>
-            🌬️ <b>Vento:</b> 120° / 15kt
+            🌬️ <b>Vento:</b> {condOrigem.vento}
           </p>
           <p>
-            🌡️ <b>Clima:</b> Parcialmente Nublado (28°C)
+            🌡️ <b>Clima:</b> {condOrigem.clima} ({condOrigem.temperatura})
           </p>
           <p>
-            ⚖️ <b>Pressão:</b> 1012 hPa
+            ⚖️ <b>Pressão:</b> {condOrigem.pressao}
           </p>
           <p>
-            ☀️ <b>Sol:</b> Nascer 06:12 / Pôr 18:45
+            {/* O horário do Sol exige cálculos complexos de lat/lon. Deixamos neutro por enquanto */}
+            ☀️ <b>Sol:</b> Célula fotoelétrica local
           </p>
         </div>
 
@@ -491,10 +681,10 @@ function App() {
               }}
             >
               <p>
-                🎙️ <b>TWR:</b> {gpsAeroportos[origemAtiva]?.freqTorre}
+                📡 <b>TWR:</b> {gpsAeroportos[origemAtiva]?.freqTorre}
               </p>
               <p>
-                🚜 <b>GND:</b> {gpsAeroportos[origemAtiva]?.freqSolo}
+                📻 <b>GND:</b> {gpsAeroportos[origemAtiva]?.freqSolo}
               </p>
             </div>
           </div>
@@ -525,13 +715,14 @@ function App() {
           </div>
         </div>
 
+        {/* BOTÃO DE CARTAS DA ORIGEM */}
         <a
-          href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${origemAtiva}`}
+          href={`/?cartas=${origemAtiva}`}
           target="_blank"
           rel="noreferrer"
-          className="link-aisweb"
+          className="btn-cartas"
         >
-          📚 BAIXAR CARTAS (AISWEB) ↗
+          📚 SALA DE CARTAS ↗
         </a>
       </div>
 
@@ -577,20 +768,20 @@ function App() {
           </p>
         </div>
 
-        <div className="card-clarity" style={{ borderTopColor: corAlerta }}>
-          <h4 style={{ color: corAlerta === "#444" ? "#00d2ff" : corAlerta }}>
-            VENTO E TRAVÉS DA PISTA
-          </h4>
+        <div className="card-clarity">
+          <h4>CONDIÇÕES LOCAIS DESTINO</h4>
           <p>
-            🌬️ <b>Direção/Força:</b> 140° a 20kt
+            🌬️ <b>Vento:</b> {condDestino.vento}
           </p>
           <p>
-            ⚠️ <b>Posição do Través:</b>{" "}
-            <span
-              style={{ color: corAlerta, fontWeight: "bold", fontSize: "1rem" }}
-            >
-              {traves} kt
-            </span>
+            🌡️ <b>Clima:</b> {condDestino.clima} ({condDestino.temperatura})
+          </p>
+          <p>
+            ⚖️ <b>Pressão:</b> {condDestino.pressao}
+          </p>
+          <p>
+            {/* O horário do Sol exige cálculos complexos de lat/lon. Deixamos neutro por enquanto */}
+            ☀️ <b>Sol:</b> Célula fotoelétrica local
           </p>
         </div>
 
@@ -670,10 +861,10 @@ function App() {
               }}
             >
               <p>
-                🎙️ <b>TWR:</b> {gpsAeroportos[destinoAtivo]?.freqTorre}
+                📡 <b>TWR:</b> {gpsAeroportos[destinoAtivo]?.freqTorre}
               </p>
               <p>
-                🚜 <b>GND:</b> {gpsAeroportos[destinoAtivo]?.freqSolo}
+                📻 <b>GND:</b> {gpsAeroportos[destinoAtivo]?.freqSolo}
               </p>
             </div>
           </div>
@@ -704,13 +895,14 @@ function App() {
           </div>
         </div>
 
+        {/* BOTÃO DE CARTAS DO DESTINO */}
         <a
-          href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${destinoAtivo}`}
+          href={`/?cartas=${destinoAtivo}`}
           target="_blank"
           rel="noreferrer"
-          className="link-aisweb"
+          className="btn-cartas"
         >
-          📚 BAIXAR CARTAS (AISWEB) ↗
+          📚 SALA DE CARTAS ↗
         </a>
       </div>
 
