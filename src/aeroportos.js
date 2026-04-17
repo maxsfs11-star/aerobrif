@@ -10,6 +10,7 @@ export const gpsAeroportos = {
     comprimento: 1940,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true, // <-- Adicione isso nos grandes!
   },
   SBGR: {
     cidade: "Guarulhos",
@@ -21,7 +22,9 @@ export const gpsAeroportos = {
     comprimento: 3700,
     freqTorre: "118.40",
     freqSolo: "121.70",
+    temMetar: true,
   },
+
   SBKP: {
     cidade: "Campinas",
     nome: "Viracopos",
@@ -32,6 +35,7 @@ export const gpsAeroportos = {
     comprimento: 3240,
     freqTorre: "118.50",
     freqSolo: "121.80",
+    temMetar: true,
   },
   SBRJ: {
     cidade: "Rio de Janeiro",
@@ -43,6 +47,7 @@ export const gpsAeroportos = {
     comprimento: 1323,
     freqTorre: "118.00",
     freqSolo: "121.00",
+    temMetar: true,
   },
   SBGL: {
     cidade: "Rio de Janeiro",
@@ -54,6 +59,7 @@ export const gpsAeroportos = {
     comprimento: 4000,
     freqTorre: "118.00",
     freqSolo: "121.65",
+    temMetar: true,
   },
   SBCF: {
     cidade: "Belo Horizonte",
@@ -65,6 +71,7 @@ export const gpsAeroportos = {
     comprimento: 3000,
     freqTorre: "118.15",
     freqSolo: "121.80",
+    temMetar: true,
   },
   SBBH: {
     cidade: "Belo Horizonte",
@@ -76,6 +83,7 @@ export const gpsAeroportos = {
     comprimento: 2590,
     freqTorre: "118.20",
     freqSolo: "121.70",
+    temMetar: true,
   },
   SBVT: {
     cidade: "Vitória",
@@ -87,6 +95,7 @@ export const gpsAeroportos = {
     comprimento: 1750,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBRP: {
     cidade: "Ribeirão Preto",
@@ -98,6 +107,7 @@ export const gpsAeroportos = {
     comprimento: 2100,
     freqTorre: "118.45",
     freqSolo: "121.70",
+    temMetar: true,
   },
   SBAE: {
     cidade: "Bauru",
@@ -109,6 +119,7 @@ export const gpsAeroportos = {
     comprimento: 2100,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBME: {
     cidade: "Macaé",
@@ -120,6 +131,7 @@ export const gpsAeroportos = {
     comprimento: 1200,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBSR: {
     cidade: "São José do Rio Preto",
@@ -131,6 +143,7 @@ export const gpsAeroportos = {
     comprimento: 1640,
     freqTorre: "118.70",
     freqSolo: "121.90",
+    temMetar: true,
   },
 
   // --- SUL ---
@@ -144,6 +157,7 @@ export const gpsAeroportos = {
     comprimento: 2280,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBFL: {
     cidade: "Florianópolis",
@@ -155,6 +169,7 @@ export const gpsAeroportos = {
     comprimento: 2400,
     freqTorre: "118.70",
     freqSolo: "121.80",
+    temMetar: true,
   },
   SBCT: {
     cidade: "Curitiba",
@@ -166,6 +181,7 @@ export const gpsAeroportos = {
     comprimento: 2215,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBFI: {
     cidade: "Foz do Iguaçu",
@@ -177,6 +193,7 @@ export const gpsAeroportos = {
     comprimento: 2195,
     freqTorre: "118.00",
     freqSolo: "121.50",
+    temMetar: true,
   },
   SBNF: {
     cidade: "Navegantes",
@@ -188,6 +205,7 @@ export const gpsAeroportos = {
     comprimento: 1701,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBJV: {
     cidade: "Joinville",
@@ -199,6 +217,7 @@ export const gpsAeroportos = {
     comprimento: 1640,
     freqTorre: "118.30",
     freqSolo: "121.70",
+    temMetar: true,
   },
   SBPK: {
     cidade: "Pelotas",
@@ -210,6 +229,7 @@ export const gpsAeroportos = {
     comprimento: 1980,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
 
   // --- CENTRO-OESTE ---
@@ -223,6 +243,7 @@ export const gpsAeroportos = {
     comprimento: 3300,
     freqTorre: "118.10",
     freqSolo: "121.70",
+    temMetar: true,
   },
   SBGO: {
     cidade: "Goiânia",
@@ -234,6 +255,7 @@ export const gpsAeroportos = {
     comprimento: 2500,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBCG: {
     cidade: "Campo Grande",
@@ -245,6 +267,7 @@ export const gpsAeroportos = {
     comprimento: 2600,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBCY: {
     cidade: "Cuiabá",
@@ -256,6 +279,7 @@ export const gpsAeroportos = {
     comprimento: 2300,
     freqTorre: "118.30",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBSI: {
     cidade: "Sinop",
@@ -267,6 +291,7 @@ export const gpsAeroportos = {
     comprimento: 1600,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
 
   // --- NORDESTE ---
@@ -280,6 +305,7 @@ export const gpsAeroportos = {
     comprimento: 3003,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBRF: {
     cidade: "Recife",
@@ -291,6 +317,7 @@ export const gpsAeroportos = {
     comprimento: 3007,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBFZ: {
     cidade: "Fortaleza",
@@ -302,6 +329,7 @@ export const gpsAeroportos = {
     comprimento: 2545,
     freqTorre: "120.10",
     freqSolo: "121.70",
+    temMetar: true,
   },
   SBSG: {
     cidade: "Natal",
@@ -313,6 +341,7 @@ export const gpsAeroportos = {
     comprimento: 3000,
     freqTorre: "118.30",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBAR: {
     cidade: "Aracaju",
@@ -324,6 +353,7 @@ export const gpsAeroportos = {
     comprimento: 2200,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBMO: {
     cidade: "Maceió",
@@ -335,6 +365,7 @@ export const gpsAeroportos = {
     comprimento: 2601,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBJP: {
     cidade: "João Pessoa",
@@ -346,6 +377,7 @@ export const gpsAeroportos = {
     comprimento: 2515,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBPL: {
     cidade: "Petrolina",
@@ -357,6 +389,7 @@ export const gpsAeroportos = {
     comprimento: 3250,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBTE: {
     cidade: "Teresina",
@@ -368,6 +401,7 @@ export const gpsAeroportos = {
     comprimento: 2200,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBPS: {
     cidade: "Porto Seguro",
@@ -379,6 +413,7 @@ export const gpsAeroportos = {
     comprimento: 2000,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
 
   // --- NORTE ---
@@ -392,6 +427,7 @@ export const gpsAeroportos = {
     comprimento: 2700,
     freqTorre: "118.30",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBBE: {
     cidade: "Belém",
@@ -403,6 +439,7 @@ export const gpsAeroportos = {
     comprimento: 2800,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBPV: {
     cidade: "Porto Velho",
@@ -414,6 +451,7 @@ export const gpsAeroportos = {
     comprimento: 2400,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBRB: {
     cidade: "Rio Branco",
@@ -425,6 +463,7 @@ export const gpsAeroportos = {
     comprimento: 2158,
     freqTorre: "118.70",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBMQ: {
     cidade: "Macapá",
@@ -436,6 +475,7 @@ export const gpsAeroportos = {
     comprimento: 2100,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
   SBMA: {
     cidade: "Marabá",
@@ -447,6 +487,7 @@ export const gpsAeroportos = {
     comprimento: 2000,
     freqTorre: "118.10",
     freqSolo: "121.90",
+    temMetar: true,
   },
 
   // --- AERÓDROMOS / AVIAÇÃO GERAL ---
@@ -460,6 +501,7 @@ export const gpsAeroportos = {
     comprimento: 1600,
     freqTorre: "118.10",
     freqSolo: "121.70",
+    temMetar: true,
   },
   SBJR: {
     cidade: "Rio de Janeiro",
@@ -471,6 +513,7 @@ export const gpsAeroportos = {
     comprimento: 900,
     freqTorre: "118.00",
     freqSolo: "121.70",
+    temMetar: true,
   },
   SDCO: {
     cidade: "Sorocaba",
@@ -482,6 +525,7 @@ export const gpsAeroportos = {
     comprimento: 1480,
     freqTorre: "118.30",
     freqSolo: "121.90",
+    temMetar: true,
   },
 
   // --- MALHA REGIONAL (NOROESTE PAULISTA) ---
@@ -546,5 +590,19 @@ export const gpsAeroportos = {
     comprimento: 900,
     freqTorre: "123.45", // Coordenação local (FCA)
     freqSolo: "---",
+  },
+
+  SBBP: {
+    nome: "Arthur Siqueira",
+    cidade: "Bragança Paulista - SP",
+    freqTorre: "135.00",
+    freqSolo: "---",
+    elevacao: 2887,
+    comprimento: 1200,
+    pista: 16,
+    fuso: -3,
+    lat: -22.9786,
+    lon: -46.5372,
+    coords: [-22.9786, -46.5372],
   },
 };

@@ -1,14 +1,10 @@
 require("dotenv").config();
+const cheerio = require("cheerio");
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 
 const app = express();
-
-console.log(
-  "CHAVE REDEMET:",
-  process.env.REDEMET_KEY ? "Detectada ✅" : "Não encontrada ❌",
-);
 
 // 🔓 CORS 100% Livre
 app.use(cors());
@@ -67,32 +63,63 @@ app.get("/api/taf/:icao", async (req, res) => {
   }
 });
 
-// 📑 ROTA NOTAM OFICIAL: AVWX
 app.get("/api/notam/:icao", async (req, res) => {
   try {
+    const icao = req.params.icao.toUpperCase();
     const response = await axios.get(
-      `https://avwx.rest/api/notam/${req.params.icao}`,
-      {
-        // O Render vai ler o token perfeitamente da gaveta dele
-        headers: { Authorization: `Token ${process.env.AVWX_TOKEN}` },
-        timeout: 5000,
-      },
+      `https://aisweb.decea.mil.br/?i=notam&loc=${icao}`,
     );
+    const $ = cheerio.load(response.data);
+    const notams = [];
 
-    // Se a AVWX mandar os avisos, a gente extrai o texto puro
-    if (response.data && response.data.length > 0) {
-      const avisos = response.data.map((n) => n.raw);
-      res.json(avisos);
-    } else {
-      res.json(["✅ Nenhum NOTAM ativo para este aeródromo."]);
+    // O AISWEB geralmente usa tags de cabeçalho (h5, h4) para a etiqueta e <p> para o texto
+    $("h5").each((i, el) => {
+      if (notams.length >= 3) return;
+
+      const titulo = $(el).text().trim(); // Pega: "F1743/26 N 13/04/2026 19:39"
+
+      const corpoElement = $(el).next("p");
+      const corpo = corpoElement.text().trim(); // Pega o texto que começa com Q)
+
+      // O DECEA costuma colocar a validade (calendário) no elemento logo abaixo do texto
+      const validade = corpoElement.next().text().trim();
+
+      if (titulo && corpo && corpo.includes("Q)")) {
+        notams.push({
+          titulo: titulo,
+          corpo: corpo,
+          validade: validade, // 👈 Nova informação enviada para o painel!
+        });
+      }
+    });
+
+    // Plano B: Se o site do DECEA mudar o HTML, tentamos ler os parágrafos diretos
+    if (notams.length === 0) {
+      $("p").each((i, el) => {
+        if (notams.length >= 3) return;
+        const texto = $(el).text().trim();
+        if (texto.includes("Q)")) {
+          // Extrai a etiqueta (Ex: F1234/26) usando Regex se estiver tudo junto
+          const match = texto.match(/([A-Z]\d{4}\/\d{2})/);
+          const titulo = match ? match[0] : "NOTAM DECEA";
+          notams.push({ titulo: titulo, corpo: texto });
+        }
+      });
     }
-  } catch (error) {
-    console.error("Erro AVWX:", error.message);
-    // 🛡️ MODO DE CONTINGÊNCIA: Se a chave falhar, o app continua lindo e verde
+
+    // Retorna a lista estruturada ou um aviso de pista livre
+    res.json(
+      notams.length > 0
+        ? notams
+        : [{ titulo: "✅ STATUS", corpo: "Nenhum NOTAM crítico para hoje." }],
+    );
+  } catch (e) {
+    console.error("Erro no Radar DECEA:", e.message);
     res.json([
-      `✅ ${req.params.icao}: OPERAÇÕES NORMAIS.`,
-      `⚠️ INFORMAÇÕES DE PÁTIO E TAXI DISPONÍVEIS VIA TWR.`,
-      `📅 CONSULTAR AISWEB PARA CARTAS ATUALIZADAS.`,
+      {
+        titulo: "❌ ERRO DE SINAL",
+        corpo: "Servidor do DECEA indisponível no momento.",
+      },
     ]);
   }
 });

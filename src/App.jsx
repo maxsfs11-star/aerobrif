@@ -11,6 +11,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./App.css";
 import { gpsAeroportos } from "./aeroportos";
+import PainelVoo from "./components/PainelVoo";
 
 // 🟢 Ícone de Avião (Radar)
 const blipIcon = L.divIcon({
@@ -142,6 +143,96 @@ function App() {
   const [notamOrigem, setNotamOrigem] = useState(["Aguardando NOTAM..."]);
   const [notamDestino, setNotamDestino] = useState(["Aguardando NOTAM..."]);
 
+  const [origemClima, setOrigemClima] = useState("");
+  const [destinoClima, setDestinoClima] = useState("");
+
+  // ☀️ Estados do Sol
+  const [solOrigem, setSolOrigem] = useState({ nascer: "--:--", por: "--:--" });
+  const [solDestino, setSolDestino] = useState({
+    nascer: "--:--",
+    por: "--:--",
+  });
+
+  // 🧠 RADAR MATEMÁTICO: Fórmula de Haversine (Distância em KM)
+  const calcularDistancia = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Raio da Terra em KM
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // 🕵️‍♂️ BUSCADOR AUTOMÁTICO DE ESTAÇÃO METEOROLÓGICA
+  const encontrarMetarMaisProximo = (latAlvo, lonAlvo) => {
+    let aeroMaisProximo = null;
+    let menorDistancia = Infinity;
+
+    // O sistema olha todos os aeroportos do seu banco
+    Object.keys(gpsAeroportos).forEach((icao) => {
+      const aero = gpsAeroportos[icao];
+
+      // Se o aeroporto for grande (temMetar: true), ele mede a distância
+      if (aero.temMetar === true && aero.coords) {
+        const distancia = calcularDistancia(
+          latAlvo,
+          lonAlvo,
+          aero.coords[0], // Puxa a latitude de dentro dos colchetes []
+          aero.coords[1], // Puxa a longitude de dentro dos colchetes []
+        );
+
+        if (distancia < menorDistancia) {
+          menorDistancia = distancia;
+          aeroMaisProximo = icao;
+        }
+      }
+    });
+
+    return aeroMaisProximo; // Retorna a sigla do maior aeroporto mais perto!
+  };
+
+  // ☀️ CALCULADORA ASTRONÔMICA (Blindada)
+  const buscarHorarioSol = async (lat, lon, setSolState) => {
+    if (!lat || !lon) {
+      setSolState({ nascer: "--:--", por: "--:--" });
+      return;
+    }
+
+    try {
+      setSolState({ nascer: "Buscando...", por: "Buscando..." });
+
+      const resposta = await fetch(
+        `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`,
+      );
+      const dados = await resposta.json();
+
+      if (dados.status === "OK") {
+        const formatarHora = (dataString) => {
+          if (!dataString) return "--:--";
+          const data = new Date(dataString);
+          if (isNaN(data)) return "--:--";
+          return data.toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        };
+
+        setSolState({
+          nascer: formatarHora(dados.results.sunrise),
+          por: formatarHora(dados.results.sunset),
+        });
+      }
+    } catch (erro) {
+      console.log("Erro no radar solar:", erro);
+      setSolState({ nascer: "--:--", por: "--:--" });
+    }
+  };
+
   const getHoraLocal = (icao) => {
     const aero = gpsAeroportos[icao];
     if (!aero) return "--:--";
@@ -180,7 +271,24 @@ function App() {
     return "";
   };
 
-  const handleCarregarRota = () => {
+  {
+    /* const handleCarregarRota = () => {
+    const infoOrigem = gpsAeroportos[origemInput];
+
+    // 💡 A MÁGICA ACONTECE AQUI:
+    // Se a Origem tem METAR próprio, usa ela.
+    // Se não tiver, o código descobre sozinho o mais perto!
+    let icaoBuscaOrigem = origemInput;
+    if (infoOrigem && !infoOrigem.temMetar) {
+      icaoBuscaOrigem = encontrarMetarMaisProximo(
+        infoOrigem.lat,
+        infoOrigem.lon,
+      );
+      console.log(`Pista pequena! Buscando METAR de: ${icaoBuscaOrigem}`);
+    }
+
+    // Agora você usa a variável icaoBuscaOrigem para puxar os dados da NOAA!
+
     const icaoO = buscarIcao(origemInput);
     const icaoD = buscarIcao(destinoInput);
     if (!icaoO || !icaoD) return alert("⚠️ Erro: Aeroporto não localizado!");
@@ -192,6 +300,82 @@ function App() {
     setNotamDestino(["Buscando..."]);
     setOrigemAtiva(icaoO);
     setDestinoAtivo(icaoD);
+  }; */
+  }
+
+  const handleCarregarRota = () => {
+    // 1. Traduz o que o piloto digitou (Nome para Sigla)
+    const icaoO = buscarIcao(origemInput);
+    const icaoD = buscarIcao(destinoInput);
+    if (!icaoO || !icaoD) return alert("⚠️ Erro: Aeroporto não localizado!");
+
+    const infoOrigem = gpsAeroportos[icaoO];
+    const infoDestino = gpsAeroportos[icaoD];
+
+    // 2. INTELIGÊNCIA DA ORIGEM
+    let icaoMetarOrigem = icaoO;
+    if (infoOrigem && !infoOrigem.temMetar) {
+      if (infoOrigem.coords) {
+        icaoMetarOrigem = encontrarMetarMaisProximo(
+          infoOrigem.coords[0],
+          infoOrigem.coords[1],
+        );
+        console.log(
+          `[ORIGEM] Calculou pista pequena. METAR mais perto é: ${icaoMetarOrigem}`,
+        );
+      } else {
+        console.log(`[ALERTA] ${icaoO} não tem 'coords' no banco de dados!`);
+      }
+    }
+
+    // 3. INTELIGÊNCIA DO DESTINO
+    let icaoMetarDestino = icaoD;
+    if (infoDestino && !infoDestino.temMetar) {
+      if (infoDestino.coords) {
+        icaoMetarDestino = encontrarMetarMaisProximo(
+          infoDestino.coords[0],
+          infoDestino.coords[1],
+        );
+        console.log(
+          `[DESTINO] Calculou pista pequena. METAR mais perto é: ${icaoMetarDestino}`,
+        );
+      } else {
+        console.log(`[ALERTA] ${icaoD} não tem 'coords' no banco de dados!`);
+      }
+    }
+
+    // 4. Resetar painel e ligar os rádios
+    setMetarOrigem("Buscando...");
+    setMetarDestino("Buscando...");
+    setTafOrigem("Buscando...");
+    setTafDestino("Buscando...");
+    setNotamOrigem(["Buscando..."]);
+    setNotamDestino(["Buscando..."]);
+
+    setOrigemAtiva(icaoO); // 📍 Vai para o Mapa e NOTAM
+    setDestinoAtivo(icaoD); // 📍 Vai para o Mapa e NOTAM
+    setOrigemClima(icaoMetarOrigem); // ☁️ Vai para a NOAA (METAR/TAF)
+    setDestinoClima(icaoMetarDestino); // ☁️ Vai para a NOAA (METAR/TAF)
+
+    if (infoOrigem && infoOrigem.coords) {
+      buscarHorarioSol(
+        infoOrigem.coords[0],
+        infoOrigem.coords[1],
+        setSolOrigem,
+      );
+    } else {
+      setSolOrigem({ nascer: "--:--", por: "--:--" });
+    }
+
+    if (infoDestino && infoDestino.coords) {
+      buscarHorarioSol(
+        infoDestino.coords[0],
+        infoDestino.coords[1],
+        setSolDestino,
+      );
+    } else {
+      setSolDestino({ nascer: "--:--", por: "--:--" });
+    }
   };
 
   useEffect(() => {
@@ -203,7 +387,9 @@ function App() {
     }
   }, [paginaCartas]);
 
-  useEffect(() => {
+  {
+    /*
+      useEffect(() => {
     if (!origemAtiva || !destinoAtivo) return;
 
     // ---- BUSCANDO ORIGEM ----
@@ -260,6 +446,70 @@ function App() {
       )
       .catch(() => setNotamDestino(["❌ Falha ao carregar NOTAMs."]));
   }, [origemAtiva, destinoAtivo]);
+    */
+  }
+
+  useEffect(() => {
+    if (!origemAtiva || !destinoAtivo || !origemClima || !destinoClima) return;
+
+    // ---- BUSCANDO ORIGEM ----
+    // ☁️ METAR e TAF usam o aeroporto GRANDE mais próximo (origemClima)
+    fetch(`https://aerobrif.onrender.com/api/metar/${origemClima}`)
+      .then((res) => res.json())
+      .then((data) =>
+        setMetarOrigem(data.length > 0 ? data[0].rawOb : "METAR Indisponível"),
+      )
+      .catch(() => setMetarOrigem("Erro na Torre"));
+
+    fetch(`https://aerobrif.onrender.com/api/taf/${origemClima}`)
+      .then((res) => res.json())
+      .then((data) =>
+        setTafOrigem(data.length > 0 ? data[0].rawTAF : "TAF Indisponível"),
+      )
+      .catch(() => setTafOrigem("Erro na Torre"));
+
+    // 📍 NOTAM da ORIGEM (Limpo e direto)
+    fetch(`https://aerobrif.onrender.com/api/notam/${origemAtiva}`)
+      .then((res) => res.json())
+      .then((data) => {
+        // Agora nós aceitamos a lista de objetos do jeito que o servidor mandar!
+        setNotamOrigem(
+          Array.isArray(data) && data.length > 0
+            ? data
+            : [{ titulo: "✅ STATUS", corpo: "Nenhum NOTAM crítico." }],
+        );
+      })
+      .catch(() =>
+        setNotamOrigem([
+          { titulo: "❌ ERRO", corpo: "Falha ao carregar NOTAMs." },
+        ]),
+      );
+
+    // ---- BUSCANDO DESTINO ----
+    // ☁️ METAR e TAF do Destino
+    fetch(`https://aerobrif.onrender.com/api/metar/${destinoClima}`)
+      .then((res) => res.json())
+      .then((data) =>
+        setMetarDestino(data.length > 0 ? data[0].rawOb : "METAR Indisponível"),
+      )
+      .catch(() => setMetarDestino("Erro na Torre"));
+
+    // 📍 NOTAM do DESTINO (Limpo e direto)
+    fetch(`https://aerobrif.onrender.com/api/notam/${destinoAtivo}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setNotamDestino(
+          Array.isArray(data) && data.length > 0
+            ? data
+            : [{ titulo: "✅ STATUS", corpo: "Nenhum NOTAM crítico." }],
+        );
+      })
+      .catch(() =>
+        setNotamDestino([
+          { titulo: "❌ ERRO", corpo: "Falha ao carregar NOTAMs." },
+        ]),
+      );
+  }, [origemAtiva, destinoAtivo, origemClima, destinoClima]);
 
   // ✈️ Radar Online com Check de Conexão
   useEffect(() => {
@@ -546,365 +796,33 @@ function App() {
         <button onClick={handleCarregarRota}>CARREGAR ROTA</button>
       </div>
 
-      {/* 🛫 PAINEL ESQUERDO (ORIGEM) */}
-      <div className="panel-side panel-left">
-        <div className="panel-title">
-          <span>🛫 ORIGEM: {origemAtiva}</span>
-          <span>🕒 LOCAL: {getHoraLocal(origemAtiva)}</span>
-        </div>
+      {/* 🛫 PAINEL DA ORIGEM COMPONENTIZADO */}
+      <PainelVoo
+        tipo="origem"
+        icao={origemAtiva}
+        horaLocal={getHoraLocal(origemAtiva)}
+        metar={metarOrigem}
+        taf={tafOrigem}
+        condicoes={condOrigem}
+        sol={solOrigem}
+        info={gpsAeroportos[origemAtiva]}
+        notamLista={notamOrigem}
+      />
 
-        <div className="card-clarity">
-          <h4 style={{ marginBottom: "10px" }}>
-            🌦️ METAR & TAF OFICIAL (NOAA)
-          </h4>
-          <p
-            style={{ fontSize: "0.75rem", color: "#aaa", marginBottom: "2px" }}
-          >
-            METAR (Condição Atual):
-          </p>
-          <p
-            style={{
-              fontFamily: "monospace",
-              color: "var(--cyan-neon)",
-              marginBottom: "10px",
-              lineHeight: "1.2",
-            }}
-          >
-            {metarOrigem}
-          </p>
-          <p
-            style={{ fontSize: "0.75rem", color: "#aaa", marginBottom: "2px" }}
-          >
-            TAF (Previsão):
-          </p>
-          <p
-            style={{
-              fontFamily: "monospace",
-              color: "var(--neon-green)",
-              lineHeight: "1.2",
-            }}
-          >
-            {tafOrigem}
-          </p>
-        </div>
+      {/* 🛬 PAINEL DO DESTINO COMPONENTIZADO */}
+      <PainelVoo
+        tipo="destino"
+        icao={destinoAtivo}
+        horaLocal={getHoraLocal(destinoAtivo)}
+        metar={metarDestino}
+        taf={tafDestino}
+        condicoes={condDestino}
+        sol={solDestino}
+        info={gpsAeroportos[destinoAtivo]}
+        notamLista={notamDestino}
+      />
 
-        <div className="card-clarity">
-          <h4>CONDIÇÕES LOCAIS ORIGEM</h4>
-          <p>
-            🌬️ <b>Vento:</b> {condOrigem.vento}
-          </p>
-          <p>
-            🌡️ <b>Clima:</b> {condOrigem.clima} ({condOrigem.temperatura})
-          </p>
-          <p>
-            ⚖️ <b>Pressão:</b> {condOrigem.pressao}
-          </p>
-          <p>
-            {/* O horário do Sol exige cálculos complexos de lat/lon. Deixamos neutro por enquanto */}
-            ☀️ <b>Sol:</b> Célula fotoelétrica local
-          </p>
-        </div>
-
-        <div
-          className="card-clarity"
-          style={{ borderTopColor: "var(--cyan-neon)" }}
-        >
-          <h4>Raio-X da Infraestrutura</h4>
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <p>
-                🏔️ <b>Altitude:</b>
-              </p>
-              <span style={{ color: "var(--cyan-neon)", fontWeight: "bold" }}>
-                {gpsAeroportos[origemAtiva]?.elevacao} ft
-              </span>
-            </div>
-            <div style={{ marginTop: "5px" }}>
-              <p
-                style={{
-                  fontSize: "0.75rem",
-                  color: "#aaa",
-                  marginBottom: "5px",
-                }}
-              >
-                COMPRIMENTO DA PISTA:
-              </p>
-              <div
-                style={{
-                  width: "100%",
-                  height: "10px",
-                  background: "#222",
-                  borderRadius: "5px",
-                  position: "relative",
-                  overflow: "hidden",
-                  border: "1px solid #444",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${(gpsAeroportos[origemAtiva]?.comprimento / 4000) * 100}%`,
-                    height: "100%",
-                    background:
-                      gpsAeroportos[origemAtiva]?.comprimento < 1500
-                        ? "var(--alert-red)"
-                        : "var(--cyan-neon)",
-                    boxShadow: "0 0 10px var(--cyan-neon)",
-                  }}
-                ></div>
-              </div>
-              <p
-                style={{
-                  textAlign: "right",
-                  fontSize: "0.8rem",
-                  marginTop: "5px",
-                }}
-              >
-                <b>{gpsAeroportos[origemAtiva]?.comprimento} metros</b>
-              </p>
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "10px",
-                marginTop: "5px",
-                borderTop: "1px solid #333",
-                paddingTop: "10px",
-              }}
-            >
-              <p>
-                📡 <b>TWR:</b> {gpsAeroportos[origemAtiva]?.freqTorre}
-              </p>
-              <p>
-                📻 <b>GND:</b> {gpsAeroportos[origemAtiva]?.freqSolo}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="card-clarity" style={{ borderTopColor: "#FFD700" }}>
-          <h4 style={{ color: "#FFD700" }}>AVISOS (NOTAM)</h4>
-          <div
-            style={{
-              maxHeight: "150px",
-              overflowY: "auto",
-              fontSize: "0.8rem",
-              color: "#ccc",
-            }}
-          >
-            {notamOrigem.map((aviso, idx) => (
-              <p
-                key={idx}
-                style={{
-                  marginBottom: "8px",
-                  borderBottom: "1px solid #333",
-                  paddingBottom: "5px",
-                }}
-              >
-                {aviso}
-              </p>
-            ))}
-          </div>
-        </div>
-
-        {/* BOTÃO DE CARTAS DA ORIGEM */}
-        <a
-          href={`/?cartas=${origemAtiva}`}
-          target="_blank"
-          rel="noreferrer"
-          className="btn-cartas"
-        >
-          📚 SALA DE CARTAS ↗
-        </a>
-      </div>
-
-      {/* 🛬 PAINEL DIREITO (DESTINO) */}
-      <div className="panel-side panel-right">
-        <div className="panel-title">
-          <span>🛬 DESTINO: {destinoAtivo}</span>
-          <span>🕒 LOCAL: {getHoraLocal(destinoAtivo)}</span>
-        </div>
-
-        <div className="card-clarity">
-          <h4 style={{ marginBottom: "10px" }}>
-            🌦️ METAR & TAF OFICIAL (NOAA)
-          </h4>
-          <p
-            style={{ fontSize: "0.75rem", color: "#aaa", marginBottom: "2px" }}
-          >
-            METAR (Condição Atual):
-          </p>
-          <p
-            style={{
-              fontFamily: "monospace",
-              color: "var(--cyan-neon)",
-              marginBottom: "10px",
-              lineHeight: "1.2",
-            }}
-          >
-            {metarDestino}
-          </p>
-          <p
-            style={{ fontSize: "0.75rem", color: "#aaa", marginBottom: "2px" }}
-          >
-            TAF (Previsão):
-          </p>
-          <p
-            style={{
-              fontFamily: "monospace",
-              color: "var(--neon-green)",
-              lineHeight: "1.2",
-            }}
-          >
-            {tafDestino}
-          </p>
-        </div>
-
-        <div className="card-clarity">
-          <h4>CONDIÇÕES LOCAIS DESTINO</h4>
-          <p>
-            🌬️ <b>Vento:</b> {condDestino.vento}
-          </p>
-          <p>
-            🌡️ <b>Clima:</b> {condDestino.clima} ({condDestino.temperatura})
-          </p>
-          <p>
-            ⚖️ <b>Pressão:</b> {condDestino.pressao}
-          </p>
-          <p>
-            {/* O horário do Sol exige cálculos complexos de lat/lon. Deixamos neutro por enquanto */}
-            ☀️ <b>Sol:</b> Célula fotoelétrica local
-          </p>
-        </div>
-
-        <div
-          className="card-clarity"
-          style={{ borderTopColor: "var(--cyan-neon)" }}
-        >
-          <h4>Raio-X da Infraestrutura</h4>
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <p>
-                🏔️ <b>Altitude:</b>
-              </p>
-              <span style={{ color: "var(--cyan-neon)", fontWeight: "bold" }}>
-                {gpsAeroportos[destinoAtivo]?.elevacao} ft
-              </span>
-            </div>
-            <div style={{ marginTop: "5px" }}>
-              <p
-                style={{
-                  fontSize: "0.75rem",
-                  color: "#aaa",
-                  marginBottom: "5px",
-                }}
-              >
-                COMPRIMENTO DA PISTA:
-              </p>
-              <div
-                style={{
-                  width: "100%",
-                  height: "10px",
-                  background: "#222",
-                  borderRadius: "5px",
-                  position: "relative",
-                  overflow: "hidden",
-                  border: "1px solid #444",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${(gpsAeroportos[destinoAtivo]?.comprimento / 4000) * 100}%`,
-                    height: "100%",
-                    background:
-                      gpsAeroportos[destinoAtivo]?.comprimento < 1500
-                        ? "var(--alert-red)"
-                        : "var(--cyan-neon)",
-                    boxShadow: "0 0 10px var(--cyan-neon)",
-                  }}
-                ></div>
-              </div>
-              <p
-                style={{
-                  textAlign: "right",
-                  fontSize: "0.8rem",
-                  marginTop: "5px",
-                }}
-              >
-                <b>{gpsAeroportos[destinoAtivo]?.comprimento} metros</b>
-              </p>
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "10px",
-                marginTop: "5px",
-                borderTop: "1px solid #333",
-                paddingTop: "10px",
-              }}
-            >
-              <p>
-                📡 <b>TWR:</b> {gpsAeroportos[destinoAtivo]?.freqTorre}
-              </p>
-              <p>
-                📻 <b>GND:</b> {gpsAeroportos[destinoAtivo]?.freqSolo}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="card-clarity" style={{ borderTopColor: "#FFD700" }}>
-          <h4 style={{ color: "#FFD700" }}>AVISOS (NOTAM)</h4>
-          <div
-            style={{
-              maxHeight: "150px",
-              overflowY: "auto",
-              fontSize: "0.8rem",
-              color: "#ccc",
-            }}
-          >
-            {notamDestino.map((aviso, idx) => (
-              <p
-                key={idx}
-                style={{
-                  marginBottom: "8px",
-                  borderBottom: "1px solid #333",
-                  paddingBottom: "5px",
-                }}
-              >
-                {aviso}
-              </p>
-            ))}
-          </div>
-        </div>
-
-        {/* BOTÃO DE CARTAS DO DESTINO */}
-        <a
-          href={`/?cartas=${destinoAtivo}`}
-          target="_blank"
-          rel="noreferrer"
-          className="btn-cartas"
-        >
-          📚 SALA DE CARTAS ↗
-        </a>
-      </div>
+      {/* ⏰ FOOTER CENTRAL (Mantém o footer que já estava aí) */}
 
       {/* ⏰ FOOTER CENTRAL */}
       <div className="footer-clarity">
