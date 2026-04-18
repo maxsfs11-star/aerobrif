@@ -86,7 +86,7 @@
   background: var(--bg-panel);
   backdrop-filter: blur(10px);
   border-radius: 12px;
-  border: 1px solid var(--border-light);
+  border: 2px solid var(--border-light);
   z-index: 1000;
   padding: 15px;
   color: var(--text-main);
@@ -119,7 +119,7 @@
   font-weight: bold;
   margin-bottom: 5px;
   padding-bottom: 5px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 2px solid var(--border-light);
 }
 
 /* 🃏 CARDS */
@@ -195,7 +195,7 @@
   z-index: 1000;
   background: var(--bg-panel);
   backdrop-filter: blur(10px);
-  padding: 8px 25px;
+  padding: 10px 40px;
   border-radius: 20px;
   border: 1px solid var(--border-light);
   color: var(--text-main);
@@ -711,5 +711,125 @@
   }
   100% {
     transform: rotate(360deg);
+  }
+}
+
+/* =========================================
+   ESTILIZAÇÃO PREMIUM DA BARRA SUPERIOR
+========================================= */
+
+/* 1. A LOGO DIVIDIDA */
+.logo-container {
+  font-family: "Arial", sans-serif;
+  font-size: 1.8rem;
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  cursor: default;
+}
+
+/* 2. OS INPUTS (CAIXAS DE TEXTO) */
+.input-voo {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #333;
+  color: #fff;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-family: monospace;
+  text-transform: uppercase;
+  width: 100px;
+  text-align: center;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+.input-voo::placeholder {
+  color: #444;
+}
+.input-voo:focus {
+  outline: none;
+  border-color: var(--cyan-neon);
+  box-shadow:
+    0 0 15px rgba(0, 210, 255, 0.4),
+    inset 0 2px 5px rgba(0, 0, 0, 0.5);
+  transform: scale(1.05);
+}
+
+/* 3. ÍCONE DO AVIÃO (ANIMAÇÃO FLUTUANTE) */
+.icone-aviao {
+  color: #a8a4a4;
+  transition: color 0.3s;
+  animation: flutuar 3s ease-in-out infinite;
+}
+@keyframes flutuar {
+  0% {
+    transform: translateY(0px) rotate(45deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(45deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(45deg);
+  }
+}
+
+/* 4. O BOTÃO CARREGAR */
+.btn-carregar {
+  background: linear-gradient(90deg, #00d2ff 0%, #0088ff 100%);
+  color: #fff;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px rgba(0, 210, 255, 0.3);
+}
+.btn-carregar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 25px rgba(0, 210, 255, 0.7);
+}
+.btn-carregar:active {
+  transform: scale(0.95);
+}
+
+/* 1. A LOGO DIVIDIDA E ANIMADA */
+.logo-container {
+  font-family: "Arial", sans-serif;
+  font-size: 1.8rem;
+  letter-spacing: 5px;
+  display: flex;
+  align-items: center;
+  cursor: default;
+}
+
+.logo-aero {
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+}
+
+.logo-brif {
+  font-weight: 400;
+  font-style: italic; /* 👈 O itálico que você pediu! */
+  color: var(--cyan-neon);
+  /* 👇 Chama a animação do brilho pulsante */
+  animation: pulso-neon 2s ease-in-out infinite alternate;
+}
+
+/* 🎬 O MOTOR DA ANIMAÇÃO (Brilho suave) */
+@keyframes pulso-neon {
+  0% {
+    text-shadow:
+      0 0 5px rgba(0, 210, 255, 0.4),
+      0 0 10px rgba(0, 210, 255, 0.2);
+  }
+  100% {
+    text-shadow:
+      0 0 20px rgba(0, 210, 255, 0.8),
+      0 0 30px rgba(0, 210, 255, 0.6),
+      0 0 40px rgba(0, 210, 255, 0.4);
   }
 }

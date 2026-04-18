@@ -129,7 +129,6 @@ function App() {
   const paginaRotaer = urlParams.get("rotaer");
   const [loadingCartas, setLoadingCartas] = useState(!!paginaCartas);
   const [loadingRotaer, setLoadingRotaer] = useState(!!paginaRotaer); // 👈 NOVO
-  const [dadosRotaer, setDadosRotaer] = useState([]); // 👈 NOVO
   const [origemInput, setOrigemInput] = useState("");
   const [destinoInput, setDestinoInput] = useState("");
   const [origemAtiva, setOrigemAtiva] = useState("");
@@ -672,7 +671,7 @@ function App() {
           <div className="radar-box">
             <div className="radar-sweep"></div>
           </div>
-          <h2 className="loading-texto">BUSCANDO ROTAER ...</h2>
+          <h2 className="loading-texto">CARREGANDO ...</h2>
           <div className="loading-barra">
             <div className="loading-progresso"></div>
           </div>
@@ -806,28 +805,63 @@ function App() {
         </MapContainer>
       </div>
 
-      <div className="header-clarity">
-        <div className="logo">AEROBRIF</div>
+      {/* 🧭 BARRA SUPERIOR (COCKPIT) */}
+      <div
+        className="header-clarity"
+        style={{ alignItems: "center", padding: "10px 25px" }}
+      >
+        {/* 1. LOGO ESTILIZADA */}
+        <div className="logo-container">
+          <span className="logo-aero">AERO</span>
+          <span className="logo-brif">BRIF</span>
+        </div>
 
         <div
           style={{
+            marginLeft: "auto",
             display: "flex",
-            gap: "10px",
-            marginLeft: "20px",
-            marginRight: "auto",
+            alignItems: "center",
+            gap: "15px",
           }}
-        ></div>
+        >
+          {/* 2. INPUT DE ORIGEM */}
+          <input
+            className="input-voo"
+            placeholder="SBSP"
+            maxLength={4}
+            value={origemInput}
+            onChange={(e) => setOrigemInput(e.target.value)}
+          />
 
-        <input
-          value={origemInput}
-          onChange={(e) => setOrigemInput(e.target.value)}
-        />
-        <span style={{ color: "#fff" }}>✈️</span>
-        <input
-          value={destinoInput}
-          onChange={(e) => setDestinoInput(e.target.value)}
-        />
-        <button onClick={handleCarregarRota}>CARREGAR ROTA</button>
+          {/* 3. VETOR SVG DO AVIÃO (Adeus Emoji!) */}
+          <svg
+            className="icone-aviao"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.5l-1.8 1.8c-.3.3-.2.8.1 1l6.4 2.8-2.6 2.6-2.5-.5c-.4-.1-.8.2-1 .5L1 16.3c-.3.3-.2.8.2 1l3.8 1.4 1.4 3.8c.2.4.7.5 1 .2l1.4-1.4c.3-.3.6-.6.5-1l-.5-2.5 2.6-2.6 2.8 6.4c.2.3.7.4 1 .1l1.8-1.8c.3-.2.6-.6.5-1.1z" />
+          </svg>
+
+          {/* 4. INPUT DE DESTINO */}
+          <input
+            className="input-voo"
+            placeholder="SBGL"
+            maxLength={4}
+            value={destinoInput}
+            onChange={(e) => setDestinoInput(e.target.value)}
+          />
+
+          {/* 5. BOTÃO COM DEGRADÊ NEON */}
+          <button className="btn-carregar" onClick={handleCarregarRota}>
+            CARREGAR ROTA
+          </button>
+        </div>
       </div>
 
       {/* 🛫 PAINEL DA ORIGEM COMPONENTIZADO */}
