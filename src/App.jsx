@@ -732,7 +732,7 @@ function App() {
         >
           {/* Mapa base escuro - Agora com o limite de fotos reais ajustado (maxNativeZoom) */}
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             maxZoom={22}
             maxNativeZoom={19}
           />
@@ -740,8 +740,9 @@ function App() {
           {/* ⛈️ CAMADA DE CHUVA (OpenWeatherMap - Direta e Limpa) */}
           <TileLayer
             url="https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=e6fd4ff8d4378e1a25f023b7a22f2f97"
-            opacity={0.3}
+            opacity={1}
             zIndex={1}
+            className="radar-clima"
           />
 
           {/* Resto dos marcadores (Linha, Origem, Destino) */}
