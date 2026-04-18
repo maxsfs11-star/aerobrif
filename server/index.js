@@ -124,6 +124,50 @@ app.get("/api/notam/:icao", async (req, res) => {
   }
 });
 
+// ⚠️ ROTAER: DECEA (AISWEB)
+app.get("/api/rotaer/:icao", async (req, res) => {
+  try {
+    const icao = req.params.icao.toUpperCase();
+    const response = await axios.get(
+      `https://aisweb.decea.mil.br/?i=aerodromos&codigo=${icao}`,
+    );
+    const $ = cheerio.load(response.data);
+    const rotaerInfo = [];
+
+    // O AISWEB usa a tag <p> e <h4/h5> para os textos do ROTAER.
+    // Vamos raspar o miolo da página e extrair as linhas que contém os dados críticos.
+    $("p, li, h5").each((i, el) => {
+      const texto = $(el).text().replace(/\s\s+/g, " ").trim();
+
+      // Filtra apenas as linhas relevantes do manual
+      if (
+        texto.startsWith("COM -") ||
+        texto.startsWith("RMK -") ||
+        texto.startsWith("CMB -") ||
+        texto.startsWith("MET -") ||
+        texto.startsWith("a.") || // Pega os sub-itens do RMK
+        texto.startsWith("b.") ||
+        texto.startsWith("c.")
+      ) {
+        if (!rotaerInfo.includes(texto) && texto.length > 5) {
+          rotaerInfo.push(texto);
+        }
+      }
+    });
+
+    res.json(
+      rotaerInfo.length > 0
+        ? rotaerInfo
+        : [
+            "⚠️ Informações detalhadas disponíveis apenas no documento original.",
+          ],
+    );
+  } catch (e) {
+    console.error("Erro no Radar ROTAER:", e.message);
+    res.json(["❌ Servidor do DECEA indisponível para ROTAER."]);
+  }
+});
+
 // LIGANDO O SERVIDOR
 app.listen(process.env.PORT || 10000, () =>
   console.log(`✅ Hangar aberto com Nova API!`),

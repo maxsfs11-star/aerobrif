@@ -126,7 +126,10 @@ const decodificarMetar = (metar) => {
 function App() {
   const urlParams = new URLSearchParams(window.location.search);
   const paginaCartas = urlParams.get("cartas");
+  const paginaRotaer = urlParams.get("rotaer");
   const [loadingCartas, setLoadingCartas] = useState(!!paginaCartas);
+  const [loadingRotaer, setLoadingRotaer] = useState(!!paginaRotaer); // 👈 NOVO
+  const [dadosRotaer, setDadosRotaer] = useState([]); // 👈 NOVO
   const [origemInput, setOrigemInput] = useState("");
   const [destinoInput, setDestinoInput] = useState("");
   const [origemAtiva, setOrigemAtiva] = useState("");
@@ -387,67 +390,21 @@ function App() {
     }
   }, [paginaCartas]);
 
-  {
-    /*
-      useEffect(() => {
-    if (!origemAtiva || !destinoAtivo) return;
-
-    // ---- BUSCANDO ORIGEM ----
-    fetch(`https://aerobrif.onrender.com/api/metar/${origemAtiva}`)
-      .then((res) => res.json())
-      .then((data) =>
-        setMetarOrigem(data.length > 0 ? data[0].rawOb : "METAR Indisponível"),
-      )
-      .catch(() => setMetarOrigem("Erro na Torre"));
-
-    fetch(`https://aerobrif.onrender.com/api/taf/${origemAtiva}`)
-      .then((res) => res.json())
-      .then((data) =>
-        setTafOrigem(data.length > 0 ? data[0].rawTAF : "TAF Indisponível"),
-      )
-      .catch(() => setTafOrigem("Erro na Torre"));
-
-    fetch(`https://aerobrif.onrender.com/api/notam/${origemAtiva}`)
-      .then((res) => res.json())
-
-      .then((data) => {
-        if (Array.isArray(data)) {
-          const apenasTextos = data.map((item) =>
-            typeof item === "string" ? item : JSON.stringify(item),
-          );
-          setNotamOrigem(
-            apenasTextos.length > 0
-              ? apenasTextos
-              : ["✅ Nenhum NOTAM crítico."],
-          );
-        } else {
-          setNotamOrigem(["✅ Nenhum NOTAM crítico."]);
-        }
-      });
-    // ---- BUSCANDO DESTINO ----
-    fetch(`https://aerobrif.onrender.com/api/metar/${destinoAtivo}`)
-      .then((res) => res.json())
-      .then((data) =>
-        setMetarDestino(data.length > 0 ? data[0].rawOb : "METAR Indisponível"),
-      )
-      .catch(() => setMetarDestino("Erro na Torre"));
-
-    fetch(`https://aerobrif.onrender.com/api/taf/${destinoAtivo}`)
-      .then((res) => res.json())
-      .then((data) =>
-        setTafDestino(data.length > 0 ? data[0].rawTAF : "TAF Indisponível"),
-      )
-      .catch(() => setTafDestino("Erro na Torre"));
-
-    fetch(`https://aerobrif.onrender.com/api/notam/${destinoAtivo}`)
-      .then((res) => res.json())
-      .then((data) =>
-        setNotamDestino(data.length > 0 ? data : ["✅ Nenhum NOTAM crítico."]),
-      )
-      .catch(() => setNotamDestino(["❌ Falha ao carregar NOTAMs."]));
-  }, [origemAtiva, destinoAtivo]);
-    */
-  }
+  // 🚀 CARREGADOR DO ROTAER
+  useEffect(() => {
+    if (paginaRotaer) {
+      fetch(`https://aerobrif.onrender.com/api/rotaer/${paginaRotaer}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setDadosRotaer(data);
+          setLoadingRotaer(false);
+        })
+        .catch(() => {
+          setDadosRotaer(["❌ Erro ao buscar ROTAER."]);
+          setLoadingRotaer(false);
+        });
+    }
+  }, [paginaRotaer]);
 
   useEffect(() => {
     if (!origemAtiva || !destinoAtivo || !origemClima || !destinoClima) return;
@@ -533,6 +490,26 @@ function App() {
     const timer = setInterval(bRadar, 30000);
     return () => clearInterval(timer);
   }, []);
+
+  // Temporizador das Cartas
+  useEffect(() => {
+    if (paginaCartas) {
+      const timer = setTimeout(() => {
+        setLoadingCartas(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [paginaCartas]);
+
+  // 👇 ADICIONE O TEMPORIZADOR DO ROTAER AQUI 👇
+  useEffect(() => {
+    if (paginaRotaer) {
+      const timer = setTimeout(() => {
+        setLoadingRotaer(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [paginaRotaer]);
 
   // 🔎 Função Mágica: Busca a cidade pelo satélite
   const descobrirCidade = async (lat, lng, vooId) => {
@@ -680,6 +657,63 @@ function App() {
               className="btn-cartas btn-cartas-destaque fade-in"
             >
               📚 BAIXAR PACOTE DE CARTAS ↗
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🚀 INTERCEPTADOR ROTAER (SALA DE ROTAER)
+  if (paginaRotaer) {
+    if (loadingRotaer) {
+      return (
+        <div className="loading-cartas-container">
+          <div className="radar-box">
+            <div className="radar-sweep"></div>
+          </div>
+          <h2 className="loading-texto">BUSCANDO ROTAER ...</h2>
+          <div className="loading-barra">
+            <div className="loading-progresso"></div>
+          </div>
+        </div>
+      );
+    }
+
+    const aero = gpsAeroportos[paginaRotaer];
+
+    return (
+      <div className="sala-cartas-container">
+        <div className="sala-cartas-content">
+          <h1 className="sala-cartas-titulo fade-in">
+            AEROBRIF <span>| ROTAER & SUPLEMENTOS</span>
+          </h1>
+          <hr className="sala-cartas-linha" />
+
+          <div className="sala-cartas-header">
+            <h2 className="sala-cartas-icao">{paginaRotaer}</h2>
+            <p className="sala-cartas-cidade fade-in">
+              {aero ? `${aero.nome} - ${aero.cidade}` : "Aeródromo Localizado"}
+            </p>
+          </div>
+
+          <div className="sala-cartas-box">
+            <h3 className="fade-in" style={{ color: "#FFD700" }}>
+              ⚠️ Acesso ao ROTAER
+            </h3>
+            <p className="fade-in">
+              As informações de ROTAER (frequências, PCN de pista, restrições e
+              combustíveis) devem ser consultadas no documento oficial
+              atualizado. Clique abaixo para abrir.
+            </p>
+
+            <a
+              href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${paginaRotaer}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-cartas btn-cartas-destaque fade-in"
+            >
+              📖 ABRIR ROTAER NO AISWEB ↗
             </a>
           </div>
         </div>

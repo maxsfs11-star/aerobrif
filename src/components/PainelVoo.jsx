@@ -304,15 +304,36 @@ export default function PainelVoo({
         </a>
       </div>
 
-      {/* 📚 BOTÃO DE CARTAS */}
-      <a
-        href={`/?cartas=${icao}`}
-        target="_blank"
-        rel="noreferrer"
-        className="btn-cartas"
-      >
-        📚 SALA DE CARTAS ↗
-      </a>
+      {/* 📚 BOTÕES DE DESPACHO OFICIAL (ROTAER E CARTAS) */}
+      <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
+        {/* NOVO: Botão ROTAER (Abre a nova sala que criamos no App.jsx) */}
+        <a
+          href={`/?rotaer=${icao}`}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-cartas"
+          style={{
+            flex: 1,
+            background: "#1a1a1a",
+            border: "1px solid #444",
+            color: "var(--cyan-neon)",
+            fontSize: "0.75rem",
+          }}
+        >
+          📖 ROTAER ↗
+        </a>
+
+        {/* Botão CARTAS (O que já existia) */}
+        <a
+          href={`/?cartas=${icao}`}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-cartas"
+          style={{ flex: 1, fontSize: "0.75rem" }}
+        >
+          🗺️ CARTAS ↗
+        </a>
+      </div>
     </div>
   );
 }
