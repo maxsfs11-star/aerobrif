@@ -175,27 +175,25 @@ app.listen(process.env.PORT || 10000, () =>
 );
 
 // ✈️ RADAR GLOBAL ONLINE (Ponte Espiã para a OpenSky com Disfarce)
+// ✈️ RADAR GLOBAL ONLINE (Com Ejetor Automático - Timeout)
 app.get("/api/radar-global", async (req, res) => {
   try {
-    // Colocamos um User-Agent falso para a OpenSky achar que somos um aplicativo legítimo
     const response = await axios.get(
       "https://opensky-network.org/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30",
       {
         headers: {
-          "User-Agent": "AeroBrif-App/1.0 (Contato: admin@aerobrif.com)",
+          "User-Agent": "AeroBrif-App/1.1 (Contato: admin@aerobrif.com)",
         },
+        timeout: 5000, // ⏱️ SEGREDO AQUI: Se a OpenSky demorar mais de 5s, ele aborta para não travar o Render!
       },
     );
 
+    // Se deu tudo certo, manda os aviões
     res.json(response.data);
   } catch (e) {
-    // Se a OpenSky bloquear, a gente avisa no console do Render qual foi o código do erro
-    console.error(
-      "🚨 Erro OpenSky:",
-      e.response ? e.response.status : e.message,
-    );
-
-    // Devolvemos uma lista vazia, assim o React não dá erro de CORS, apenas fica sem aviões
-    res.json({ states: [] });
+    console.error("🚨 Erro OpenSky Abortado:", e.message);
+    // 🛡️ SEGREDO 2: Devolvemos status 200 (OK) mesmo com erro, mandando uma lista vazia.
+    // Isso IMPEDE que o React dê aquele erro vermelho de CORS ou Bad Gateway na tela!
+    res.status(200).json({ states: [] });
   }
 });
