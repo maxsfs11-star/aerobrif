@@ -176,24 +176,24 @@ app.listen(process.env.PORT || 10000, () =>
 
 // ✈️ RADAR GLOBAL ONLINE (Ponte Espiã para a OpenSky com Disfarce)
 // ✈️ RADAR GLOBAL ONLINE (Com Ejetor Automático - Timeout)
+// ✈️ RADAR GLOBAL ONLINE (Autenticado VIP - Limites Estendidos)
 app.get("/api/radar-global", async (req, res) => {
   try {
-    const response = await axios.get(
-      "https://opensky-network.org/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30",
-      {
-        headers: {
-          "User-Agent": "AeroBrif-App/1.1 (Contato: admin@aerobrif.com)",
-        },
-        timeout: 5000, // ⏱️ SEGREDO AQUI: Se a OpenSky demorar mais de 5s, ele aborta para não travar o Render!
+    const response = await axios.get("https://opensky-network.org/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30", {
+      // 👇 AQUI ESTÁ O SEU CRACHÁ VIP 👇
+      auth: {
+        username: process.env.OPENSKY_USERNAME, // ⚠️ Verifique se o nome no seu .env está assim
+        password: process.env.OPENSKY_PASSWORD  // ⚠️ Verifique se o nome no seu .env está assim
       },
-    );
-
-    // Se deu tudo certo, manda os aviões
+      headers: {
+        "User-Agent": "AeroBrif-App/2.0"
+      },
+      timeout: 8000 // Damos 8 segundos pro servidor deles achar nossa conta
+    });
+    
     res.json(response.data);
   } catch (e) {
-    console.error("🚨 Erro OpenSky Abortado:", e.message);
-    // 🛡️ SEGREDO 2: Devolvemos status 200 (OK) mesmo com erro, mandando uma lista vazia.
-    // Isso IMPEDE que o React dê aquele erro vermelho de CORS ou Bad Gateway na tela!
-    res.status(200).json({ states: [] });
+    console.error("🚨 Erro OpenSky Autenticado:", e.message);
+    res.status(200).json({ states: [] }); 
   }
 });

@@ -468,27 +468,19 @@ function App() {
   }, [origemAtiva, destinoAtivo, origemClima, destinoClima]);
 
   // ✈️ RADAR GLOBAL ONLINE (Voo Rasante - Anti-Spam Ativado)
+  // ✈️ RADAR GLOBAL ONLINE (Via Servidor AeroBrif VIP)
   useEffect(() => {
     const bRadar = async () => {
       try {
-        const urlOpenSky =
-          "https://opensky-network.org/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30";
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlOpenSky)}`;
+        // 👇 Voltamos a apontar para o seu servidor no Render! 👇
+        const res = await fetch(
+          "https://aerobrif.onrender.com/api/radar-global",
+        );
 
-        const res = await fetch(proxyUrl);
+        // Se a resposta não for JSON, intercepta o erro
+        if (!res.ok) throw new Error("Falha na comunicação com o servidor.");
 
-        // 🛡️ Lemos a resposta como texto puro primeiro para verificar se fomos bloqueados
-        const textoResposta = await res.text();
-
-        // Se o servidor mandou a mensagem de castigo, a gente aborta sem quebrar o código
-        if (textoResposta.includes("Too many requests")) {
-          throw new Error(
-            "Limite de requisições atingido. Aguardando liberação da antena.",
-          );
-        }
-
-        // Se passou pela segurança, aí sim convertemos para JSON
-        const data = JSON.parse(textoResposta);
+        const data = await res.json();
 
         if (data && data.states) {
           const frotaGlobal = data.states
@@ -507,16 +499,13 @@ function App() {
           setIsServerOnline(true);
         }
       } catch (err) {
-        // Agora o erro fica limpo no console, sem telas vermelhas assustadoras
-        console.log("Radar em modo de espera:", err.message);
+        console.log("Radar VIP em espera:", err.message);
       }
     };
 
     bRadar();
-
-    // ⏱️ AUMENTAMOS O TEMPO PARA 60 SEGUNDOS (60000 ms)
-    // Isso evita que a OpenSky bloqueie o aplicativo dos seus usuários
-    const timer = setInterval(bRadar, 60000);
+    // Com a conta VIP, podemos buscar a cada 30 ou 45 segundos tranquilamente.
+    const timer = setInterval(bRadar, 30000);
     return () => clearInterval(timer);
   }, []);
 
