@@ -467,16 +467,17 @@ function App() {
       );
   }, [origemAtiva, destinoAtivo, origemClima, destinoClima]);
 
-  // ✈️ RADAR GLOBAL 100% REAL (Via Servidor VIP AeroBrif)
+  // ✈️ RADAR GLOBAL DIRETO (Bypass do Servidor Render)
   useEffect(() => {
     const bRadar = async () => {
       try {
-        // Ligando para a sua torre no Render, que tem a senha da OpenSky
+        // 👇 A requisição agora vai DIRETO para a OpenSky pelo navegador! 👇
         const res = await fetch(
-          "https://aerobrif.onrender.com/api/radar-global",
+          "https://opensky-network.org/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30",
         );
 
-        if (!res.ok) throw new Error("Falha na comunicação com o servidor.");
+        if (!res.ok)
+          throw new Error("Falha na comunicação direta com OpenSky.");
 
         const data = await res.json();
 
@@ -496,20 +497,17 @@ function App() {
           setRadar(frotaGlobal);
           setIsServerOnline(true);
         } else {
-          // Se a lista vier vazia, significa que o castigo da OpenSky ainda está ativo.
-          console.log(
-            "Radar Real: Sem aeronaves no momento ou aguardando liberação de IP.",
-          );
+          console.log("Radar Real: Sem aeronaves na área da antena.");
         }
       } catch (err) {
-        console.log("Radar Real em espera:", err.message);
+        console.log("Radar Direto bloqueado pelo navegador:", err.message);
+        setIsServerOnline(false);
       }
     };
 
     bRadar();
 
-    // ⏱️ AQUI ESTÁ O SEGREDO: 60.000 milissegundos (1 Minuto).
-    // Atualizar a cada minuto mantém a OpenSky feliz e evita o bloqueio!
+    // Mantemos a trava de 1 minuto para não esgotar o limite do navegador
     const timer = setInterval(bRadar, 60000);
     return () => clearInterval(timer);
   }, []);
