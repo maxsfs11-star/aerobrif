@@ -467,47 +467,46 @@ function App() {
       );
   }, [origemAtiva, destinoAtivo, origemClima, destinoClima]);
 
-  // ✈️ RADAR GLOBAL ONLINE (OpenSky Network)
+  // ✈️ RADAR GLOBAL ONLINE (Voo Rasante - Bypass CORS)
   useEffect(() => {
     const bRadar = async () => {
       try {
-        // Antena apontada para a América do Sul inteira (Latitude/Longitude bounding box)
-        // Isso pega do topo do Brasil até a Argentina.
-        const res = await fetch(
-          "https://aerobrif.onrender.com/api/radar-global",
-        );
+        // 1. A URL real do radar (América do Sul)
+        const urlOpenSky =
+          "https://opensky-network.org/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30";
+
+        // 2. O Túnel Camuflado (Proxy AllOrigins) que burla o bloqueio
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlOpenSky)}`;
+
+        // 3. O React pede os dados pelo túnel
+        const res = await fetch(proxyUrl);
 
         if (!res.ok) throw new Error();
         const data = await res.json();
 
         if (data && data.states) {
-          // A OpenSky devolve uma matriz maluca. Nós decodificamos e traduzimos aqui:
           const frotaGlobal = data.states
-            .filter((voo) => voo[5] && voo[6]) // Garante que o avião está emitindo GPS (Lat/Lng)
-            .slice(0, 400) // 🛑 PROTEÇÃO: Mostra no máximo 400 aviões para não travar a tela
+            .filter((voo) => voo[5] && voo[6])
+            .slice(0, 400) // Mantém a proteção de 400 aviões
             .map((voo) => ({
-              id: voo[1] ? voo[1].trim() : voo[0], // Callsign (ex: GLO1234)
+              id: voo[1] ? voo[1].trim() : voo[0],
               lng: voo[5],
               lat: voo[6],
-              altitude: voo[7] ? Math.round(voo[7] * 3.28084) : 0, // Converte Metros para Pés (ft)
-              velocidade: voo[9] ? Math.round(voo[9] * 1.94384) : 0, // Converte M/s para Nós (kt)
-              proa: voo[10] || 0, // Direção do nariz do avião
+              altitude: voo[7] ? Math.round(voo[7] * 3.28084) : 0,
+              velocidade: voo[9] ? Math.round(voo[9] * 1.94384) : 0,
+              proa: voo[10] || 0,
             }));
 
           setRadar(frotaGlobal);
           setIsServerOnline(true);
         }
       } catch (err) {
-        console.log(
-          "Falha no sinal da OpenSky. Mantendo visualização anterior.",
-          err,
-        );
+        console.log("Radar OpenSky indisponível no momento.", err);
         setIsServerOnline(false);
       }
     };
 
     bRadar();
-    // A OpenSky pede para não abusar do servidor grátis. A cada 30 segundos é o ideal.
     const timer = setInterval(bRadar, 30000);
     return () => clearInterval(timer);
   }, []);
