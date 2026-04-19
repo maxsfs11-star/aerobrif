@@ -789,6 +789,7 @@ function App() {
                   <b>🛫 Origem:</b> {origemAtiva}
                 </Popup>
               </Marker>
+
               <Marker
                 position={gpsAeroportos[destinoAtivo].coords}
                 icon={iconDestino}
@@ -801,35 +802,41 @@ function App() {
           )}
 
           {/* Aviões do Radar */}
-          {radar.map((aviao) => (
-            <Marker
-              key={aviao.id}
-              position={[aviao.lat, aviao.lng]}
-              icon={blipIcon}
-              eventHandlers={{
-                click: () => descobrirCidade(aviao.lat, aviao.lng, aviao.id),
-              }}
-            >
-              <Popup>
-                <div style={{ textAlign: "center", marginBottom: "5px" }}>
-                  <b style={{ color: "#fff" }}>✈️ Voo: {aviao.id}</b>
-                </div>
+          {radar.map((voo) => {
+            // ✈️ O Motor de Renderização do Ícone
+            const iconeAviao = L.divIcon({
+              className: "custom-plane-icon", // Classe limpa, sem o fundo branco padrão do Leaflet
+              iconSize: [24, 24], // Tamanho do avião
+              iconAnchor: [12, 12], // O eixo de rotação fica exatamente no meio (12px)
 
-                <hr style={{ margin: "5px 0", borderColor: "#fff" }} />
+              // Desenhamos o SVG do avião direto no HTML e injetamos a PROA na rotação!
+              html: `
+      <div style="transform: rotate(${voo.proa}deg); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" fill="#FFFFFF" stroke="#000000" stroke-width="1" style="filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.5));">
+          <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+        </svg>
+      </div>
+    `,
+            });
 
-                <div style={{ color: "#fff" }}>
-                  🏔️ <b>Altitude:</b> {aviao.altitude} ft
-                </div>
-
-                <div style={{ color: "#fff" }}>
-                  💨 <b>Velocidade:</b> {aviao.velocidade} kt
-                </div>
-                <div style={{ marginTop: "5px", color: "#0056b3" }}>
-                  📍 <b>Local:</b> {cidadesSobrevoo[aviao.id] || "Buscando..."}
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+            return (
+              <Marker
+                key={voo.id}
+                position={[voo.lat, voo.lng]}
+                icon={iconeAviao}
+              >
+                <Popup className="fonte-dados">
+                  <strong>{voo.id}</strong>
+                  <br />
+                  Altitude: {voo.altitude} ft
+                  <br />
+                  Velocidade: {voo.velocidade} kt
+                  <br />
+                  Proa: {voo.proa}°
+                </Popup>
+              </Marker>
+            );
+          })}
         </MapContainer>
       </div>
 
@@ -918,43 +925,64 @@ function App() {
         notamLista={notamDestino}
       />
 
-      {/* ⏰ FOOTER CENTRAL (Mantém o footer que já estava aí) */}
-
       {/* ⏰ FOOTER CENTRAL */}
-      <div className="footer-clarity">
-        <span>
-          UTC:{" "}
-          <b style={{ color: "#00d2ff" }}>
-            {new Date().toISOString().substring(11, 16)}Z
-          </b>
-        </span>
-        <span style={{ color: "#555" }}>|</span>
-        <span>
-          📏 ROTA:{" "}
-          <b style={{ color: "#00d2ff", fontSize: "1.1rem" }}>
-            {dist ? `${dist} NM` : "---"}
-          </b>
-        </span>
-        <span style={{ color: "#555" }}>|</span>
-        <span>
-          ⏱️ ETE:{" "}
-          <b style={{ color: "#00d2ff", fontSize: "1.1rem" }}>
-            {dist ? tempo : "---"}
-          </b>
-        </span>
-        <span>
-          <span
-            style={{
-              color: isServerOnline ? "#00ff00" : "#ff4d4d",
-              marginRight: "8px",
-            }}
-          >
-            ●
+      {/* HUD DA BARRA SUPERIOR */}
+      <div
+        className="painel-vidro status-bar"
+        style={{
+          position: "absolute",
+          bottom: "20px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 1000,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {/* Bloco UTC */}
+        <div>
+          <span className="status-label">UTC:</span>
+          {/* A cor azul ciano para destacar a hora oficial */}
+          <span className="fonte-dados" style={{ color: "#0ea5e9" }}>
+            05:18Z
           </span>
-          <b style={{ color: isServerOnline ? "#00ff00" : "#ff4d4d" }}>
-            RADAR {isServerOnline ? "ONLINE" : "OFFLINE"}
-          </b>
-        </span>
+        </div>
+
+        <span className="status-separador">|</span>
+
+        {/* Bloco ROTA */}
+        <div>
+          <span className="status-label">📏 ROTA:</span>
+          <span className="fonte-dados">---</span>
+        </div>
+
+        <span className="status-separador">|</span>
+
+        {/* Bloco ETE */}
+        <div>
+          <span className="status-label">⏱️ ETE:</span>
+          <span className="fonte-dados">---</span>
+        </div>
+
+        <span className="status-separador">|</span>
+
+        {/* Bloco RADAR (Dinâmico) */}
+        <div>
+          {isServerOnline ? (
+            <>
+              <span className="luz-online">●</span>
+              <span className="fonte-dados" style={{ color: "#4ade80" }}>
+                RADAR ONLINE
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="luz-offline">●</span>
+              <span className="fonte-dados" style={{ color: "#f87171" }}>
+                RADAR OFFLINE
+              </span>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

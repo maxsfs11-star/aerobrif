@@ -1,3 +1,8 @@
+/* Puxa a fonte "Roboto Mono" do Google Fonts */
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap");
+
+/* ... (resto do seu CSS, como o .painel-vidro, fica aqui embaixo) ... */
+
 :root {
   --cyan-neon: #00d2ff;
   --bg-panel: rgba(20, 25, 35, 0.85);
@@ -79,18 +84,21 @@
 
 /* 🪟 PAINÉIS */
 .panel-side {
+  background: rgba(10, 14, 24, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px); /* Suporte para navegadores Apple */
+  border: 1px solid rgba(1, 2, 0, 0.637);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+  padding: 20px;
   position: absolute;
   top: 80px;
   bottom: 80px;
   width: 340px;
-  background: var(--bg-panel);
-  backdrop-filter: blur(10px);
   border-radius: 12px;
-  border: 2px solid var(--border-light);
   z-index: 1000;
   padding: 15px;
-  color: var(--text-main);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -124,7 +132,7 @@
 
 /* 🃏 CARDS */
 .card-clarity {
-  background: var(--bg-card);
+  background: #1c1f2cee;
   border-radius: 8px;
   padding: 12px;
   border-top: 2px solid #444;
@@ -842,4 +850,87 @@
      O saturate(1.5) devolve a vibração para não ficar opaco no fundo branco. */
 
   filter: hue-rotate(300deg) saturate(3) contrast(0.4);
+}
+
+/* 🪟 PAINEL GLASSMORPHISM - Estilo Cockpit Moderno */
+.painel-vidro {
+  /* Fundo escuro com 70% de opacidade (deixa a luz passar) */
+  background: rgba(15, 23, 42, 0.7);
+
+  /* 🪄 A MÁGICA: Borra o mapa que estiver passando atrás do painel */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px); /* Suporte para navegadores Apple */
+
+  /* Borda branca super fina e quase transparente para simular o corte do vidro */
+  border: 1px solid rgba(255, 255, 255, 0.15);
+
+  /* Cantos suaves e uma sombra para dar profundidade de flutuação */
+  border-radius: 16px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+
+  /* Texto sempre branco para contrastar com o fundo escuro */
+  color: #ffffff;
+
+  /* Espaçamento interno para os textos não colarem na borda */
+  padding: 20px;
+}
+
+/* 🔢 TIPOGRAFIA DE COMPUTADOR DE VOO (Para dados e números) */
+.fonte-dados {
+  font-family: "Roboto Mono", monospace;
+  /* Deixa as letras um pouquinho mais juntas para caber mais informação */
+  letter-spacing: -0.5px;
+  /* Um leve brilho azul claro para imitar as telas de fósforo/LCD */
+  color: #e2e8f0;
+}
+
+/* 🚥 BARRA DE STATUS SUPERIOR (HUD) */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px; /* Espaço entre os blocos */
+  padding: 10px 25px;
+  border-radius: 50px; /* Deixa as bordas totalmente redondas (formato pílula) */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Oculta a barra de separação em telas de celular muito pequenas */
+.status-separador {
+  color: rgba(255, 255, 255, 0.2);
+  font-weight: 300;
+}
+
+/* Rótulos dos dados (UTC, ROTA, ETE) menores e discretos */
+.status-label {
+  color: #94a3b8; /* Cinza claro aeronáutico */
+  font-size: 11px;
+  text-transform: uppercase;
+  margin-right: 6px;
+  font-family: sans-serif;
+  letter-spacing: 1px;
+}
+
+/* 📡 Animação da Luz do Radar */
+@keyframes pulso-radar {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.luz-online {
+  color: #4ade80; /* Verde brilhante */
+  animation: pulso-radar 2s infinite; /* Faz a luz verde pulsar suavemente */
+  margin-right: 6px;
+}
+
+.luz-offline {
+  color: #f87171; /* Vermelho alerta */
+  margin-right: 6px;
 }

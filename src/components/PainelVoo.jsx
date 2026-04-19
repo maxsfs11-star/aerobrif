@@ -28,22 +28,14 @@ export default function PainelVoo({
       {/* 🌦️ METAR & TAF */}
       <div className="card-clarity">
         <h4 style={{ marginBottom: "10px" }}>🌦️ METAR & TAF OFICIAL (NOAA)</h4>
+
         <p style={{ fontSize: "0.75rem", color: "#aaa", marginBottom: "2px" }}>
           METAR (Condição Atual):
         </p>
-        <p
-          style={{
-            fontFamily: "monospace",
-            color: "var(--cyan-neon)",
-            marginBottom: "10px",
-            lineHeight: "1.2",
-          }}
-        >
-          {metar}
-        </p>
-        <p style={{ fontSize: "0.75rem", color: "#aaa", marginBottom: "2px" }}>
-          TAF (Previsão):
-        </p>
+
+        <p className="fonte-dados">{metar}</p>
+
+        <p className="fonte-dados">TAF (Previsão):</p>
         <p
           style={{
             fontFamily: "monospace",
