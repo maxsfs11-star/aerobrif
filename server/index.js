@@ -172,3 +172,19 @@ app.get("/api/rotaer/:icao", async (req, res) => {
 app.listen(process.env.PORT || 10000, () =>
   console.log(`✅ Hangar aberto com Nova API!`),
 );
+
+// ✈️ RADAR GLOBAL ONLINE (Ponte Espiã para a OpenSky)
+app.get("/api/radar-global", async (req, res) => {
+  try {
+    // O seu servidor (que não tem bloqueio de CORS) faz a requisição militar:
+    const response = await axios.get(
+      "https://opensky-network.org/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30",
+    );
+
+    // Repassa os dados puros para o seu React
+    res.json(response.data);
+  } catch (e) {
+    console.error("Erro no Radar Global OpenSky:", e.message);
+    res.status(500).json({ error: "Torre OpenSky indisponível" });
+  }
+});

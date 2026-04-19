@@ -345,9 +345,9 @@
   transform: translate(-50%, -50%);
   width: 10px;
   height: 10px;
-  border: 2px solid #00ff00;
+  border: 2px solid #ff1e00;
   border-radius: 50%;
-  animation: radar-pulse 2s infinite; /* Faz pulsar infinitamente */
+  animation: radar-pulse 3s infinite; /* Faz pulsar infinitamente */
   opacity: 0;
 }
 
@@ -369,13 +369,13 @@
 .radar-blip {
   width: 12px;
   height: 12px;
-  background-color: #00ff00; /* Verde Neon */
+  background-color: #ff1e00; /* Verde Neon */
   border-radius: 50%;
   box-shadow:
-    0 0 10px #00ff00,
-    0 0 20px #00ff00;
-  border: 2px solid #ffffff;
-  animation: pulse-blip 2s infinite;
+    0 0 7px #ff1e00,
+    0 0 15px #ff1e00;
+  border: 1px solid #ffffff;
+  animation: pulse-blip 3s infinite;
 }
 
 @keyframes pulse-blip {
@@ -840,5 +840,6 @@
 .radar-clima {
   /* hue-rotate(220deg) empurra os tons de rosa e roxo para a faixa do azul/ciano. 
      O saturate(1.5) devolve a vibração para não ficar opaco no fundo branco. */
-  filter: hue-rotate(100deg) saturate(1.5);
+
+  filter: hue-rotate(300deg) saturate(3) contrast(0.4);
 }

@@ -467,25 +467,47 @@ function App() {
       );
   }, [origemAtiva, destinoAtivo, origemClima, destinoClima]);
 
-  // ✈️ Radar Online com Check de Conexão
+  // ✈️ RADAR GLOBAL ONLINE (OpenSky Network)
   useEffect(() => {
-    const bRadar = () => {
-      fetch("https://aerobrif.onrender.com/api/radar")
-        .then((res) => {
-          if (!res.ok) throw new Error();
-          return res.json();
-        })
-        .then((data) => {
-          setRadar(data);
-          setIsServerOnline(true); // ✅ Resposta chegou, estamos online!
-        })
-        .catch(() => {
-          setIsServerOnline(false); // ❌ Falha na comunicação, servidor offline!
-        });
+    const bRadar = async () => {
+      try {
+        // Antena apontada para a América do Sul inteira (Latitude/Longitude bounding box)
+        // Isso pega do topo do Brasil até a Argentina.
+        const res = await fetch(
+          "https://opensky-network.org/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30",
+        );
+
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+
+        if (data && data.states) {
+          // A OpenSky devolve uma matriz maluca. Nós decodificamos e traduzimos aqui:
+          const frotaGlobal = data.states
+            .filter((voo) => voo[5] && voo[6]) // Garante que o avião está emitindo GPS (Lat/Lng)
+            .slice(0, 400) // 🛑 PROTEÇÃO: Mostra no máximo 400 aviões para não travar a tela
+            .map((voo) => ({
+              id: voo[1] ? voo[1].trim() : voo[0], // Callsign (ex: GLO1234)
+              lng: voo[5],
+              lat: voo[6],
+              altitude: voo[7] ? Math.round(voo[7] * 3.28084) : 0, // Converte Metros para Pés (ft)
+              velocidade: voo[9] ? Math.round(voo[9] * 1.94384) : 0, // Converte M/s para Nós (kt)
+              proa: voo[10] || 0, // Direção do nariz do avião
+            }));
+
+          setRadar(frotaGlobal);
+          setIsServerOnline(true);
+        }
+      } catch (err) {
+        console.log(
+          "Falha no sinal da OpenSky. Mantendo visualização anterior.",
+          err,
+        );
+        setIsServerOnline(false);
+      }
     };
 
     bRadar();
-    // Diminuí para 30 segundos para o status ser mais rápido se a torre cair
+    // A OpenSky pede para não abusar do servidor grátis. A cada 30 segundos é o ideal.
     const timer = setInterval(bRadar, 30000);
     return () => clearInterval(timer);
   }, []);
@@ -788,13 +810,16 @@ function App() {
             >
               <Popup>
                 <div style={{ textAlign: "center", marginBottom: "5px" }}>
-                  <b>✈️ Voo: {aviao.id}</b>
+                  <b style={{ color: "#fff" }}>✈️ Voo: {aviao.id}</b>
                 </div>
-                <hr style={{ margin: "5px 0", borderColor: "#ccc" }} />
-                <div>
+
+                <hr style={{ margin: "5px 0", borderColor: "#fff" }} />
+
+                <div style={{ color: "#fff" }}>
                   🏔️ <b>Altitude:</b> {aviao.altitude} ft
                 </div>
-                <div>
+
+                <div style={{ color: "#fff" }}>
                   💨 <b>Velocidade:</b> {aviao.velocidade} kt
                 </div>
                 <div style={{ marginTop: "5px", color: "#0056b3" }}>
