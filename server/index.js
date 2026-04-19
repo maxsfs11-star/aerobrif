@@ -8,6 +8,7 @@ const app = express();
 
 // 🔓 CORS 100% Livre
 app.use(cors());
+app.use(express.json());
 
 app.get("/", (req, res) => res.send("Torre AEROBRIF: Nova API Online!"));
 
