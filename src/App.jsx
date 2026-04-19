@@ -13,14 +13,6 @@ import "./App.css";
 import { gpsAeroportos } from "./aeroportos";
 import PainelVoo from "./components/PainelVoo";
 
-// 🟢 Ícone de Avião (Radar)
-const blipIcon = L.divIcon({
-  className: "custom-blip",
-  html: "<div class='radar-blip'></div>",
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-});
-
 // 🟢 Ícone de Origem (Decolagem)
 const iconOrigem = L.divIcon({
   className: "marcador-origem",
@@ -39,28 +31,6 @@ const iconDestino = L.divIcon({
 
 // Banco de Dados da Pista (Expandido)
 // Banco de Dados da Pista (Guia Nacional Expandido)
-
-// Funções Matemáticas
-const calcularDistanciaNM = (lat1, lon1, lat2, lon2) => {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 0.539957;
-};
-
-const calcularTempoVoo = (distanciaNM) => {
-  if (!distanciaNM || distanciaNM <= 0) return "--h --m";
-  const tempoHoras = distanciaNM / 450;
-  const horas = Math.floor(tempoHoras);
-  const minutos = Math.round((tempoHoras - horas) * 60);
-  return `${horas}h ${minutos < 10 ? "0" : ""}${minutos}m`;
-};
 
 // 🧠 MÁQUINA DE DECODIFICAÇÃO DE METAR
 const decodificarMetar = (metar) => {
@@ -134,8 +104,9 @@ function App() {
   const [origemAtiva, setOrigemAtiva] = useState("");
   const [destinoAtivo, setDestinoAtivo] = useState("");
   const [radar, setRadar] = useState([]);
-  const [cidadesSobrevoo, setCidadesSobrevoo] = useState({});
+
   const [isServerOnline, setIsServerOnline] = useState(false);
+  const [, setDadosRotaer] = useState(null);
 
   // Estados do Clima e Avisos
   const [metarOrigem, setMetarOrigem] = useState("Aguardando NOAA...");
@@ -467,17 +438,16 @@ function App() {
       );
   }, [origemAtiva, destinoAtivo, origemClima, destinoClima]);
 
-  // ✈️ RADAR GLOBAL DIRETO (Bypass do Servidor Render)
+  // ✈️ RADAR GLOBAL 100% REAL (Via Vercel Edge Proxy)
   useEffect(() => {
     const bRadar = async () => {
       try {
-        // 👇 A requisição agora vai DIRETO para a OpenSky pelo navegador! 👇
+        // 👇 A URL agora começa com o nosso túnel! O navegador não vai bloquear por CORS.
         const res = await fetch(
-          "https://opensky-network.org/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30",
+          "/proxy-opensky/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30",
         );
 
-        if (!res.ok)
-          throw new Error("Falha na comunicação direta com OpenSky.");
+        if (!res.ok) throw new Error("Falha no túnel de comunicação.");
 
         const data = await res.json();
 
@@ -486,7 +456,8 @@ function App() {
             .filter((voo) => voo[5] && voo[6])
             .slice(0, 400)
             .map((voo) => ({
-              id: voo[1] ? voo[1].trim() : voo[0],
+              keyReact: String(voo[0]),
+              id: voo[1] && voo[1].trim() !== "" ? voo[1].trim() : voo[0],
               lng: voo[5],
               lat: voo[6],
               altitude: voo[7] ? Math.round(voo[7] * 3.28084) : 0,
@@ -497,17 +468,15 @@ function App() {
           setRadar(frotaGlobal);
           setIsServerOnline(true);
         } else {
-          console.log("Radar Real: Sem aeronaves na área da antena.");
+          console.log("Radar Real: Sem aeronaves na área no momento.");
         }
       } catch (err) {
-        console.log("Radar Direto bloqueado pelo navegador:", err.message);
-        setIsServerOnline(false);
+        console.log("Radar em espera:", err.message);
       }
     };
 
     bRadar();
-
-    // Mantemos a trava de 1 minuto para não esgotar o limite do navegador
+    // Atualiza a cada 1 minuto (60000) para respeitar os limites reais da antena.
     const timer = setInterval(bRadar, 60000);
     return () => clearInterval(timer);
   }, []);
@@ -522,7 +491,6 @@ function App() {
     }
   }, [paginaCartas]);
 
-  // 👇 ADICIONE O TEMPORIZADOR DO ROTAER AQUI 👇
   useEffect(() => {
     if (paginaRotaer) {
       const timer = setTimeout(() => {
@@ -532,66 +500,13 @@ function App() {
     }
   }, [paginaRotaer]);
 
-  // 🔎 Função Mágica: Busca a cidade pelo satélite
-  const descobrirCidade = async (lat, lng, vooId) => {
-    setCidadesSobrevoo((prev) => ({
-      ...prev,
-      [vooId]: "Buscando satélite...",
-    }));
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
-      );
-      const data = await res.json();
-      const local =
-        data.address.city ||
-        data.address.town ||
-        data.address.village ||
-        data.address.state ||
-        "Área Oceânica/Remota";
-      setCidadesSobrevoo((prev) => ({ ...prev, [vooId]: local }));
-    } catch (err) {
-      console.error("Erro ao buscar cidade:", err);
-      setCidadesSobrevoo((prev) => ({ ...prev, [vooId]: "Desconhecido" }));
-    }
-  };
-
-  // Cálculos de Rota e Vento
-  let traves = 0,
-    corAlerta = "#444";
-  let dist = 0,
-    tempo = "--h --m";
-
-  if (gpsAeroportos[origemAtiva] && gpsAeroportos[destinoAtivo]) {
-    dist = Math.round(
-      calcularDistanciaNM(
-        gpsAeroportos[origemAtiva].coords[0],
-        gpsAeroportos[origemAtiva].coords[1],
-        gpsAeroportos[destinoAtivo].coords[0],
-        gpsAeroportos[destinoAtivo].coords[1],
-      ),
-    );
-    tempo = calcularTempoVoo(dist);
-
-    const diff = Math.abs(140 - gpsAeroportos[destinoAtivo].pista);
-    traves = Math.round(20 * Math.sin((diff * Math.PI) / 180));
-    if (traves > 15) corAlerta = "#ff4d4d";
-    else if (traves > 10) corAlerta = "#FFD700";
-  }
-
-  // Processa o clima em tempo real para os cards resumos
   const condOrigem = decodificarMetar(metarOrigem);
   const condDestino = decodificarMetar(metarDestino);
 
-  // 🚀 INTERCEPTADOR DE URL (SALA DE CARTAS E LOADING)
-  // 🚀 INTERCEPTADOR DE URL (SALA DE CARTAS E LOADING)
   if (paginaCartas) {
-    // 1. TELA DE LOADING (O Avião)
-    // 1. TELA DE LOADING (Radar Customizado - 100% Grátis)
     if (loadingCartas) {
       return (
         <div className="loading-cartas-container">
-          {/* 👇 O NOSSO RADAR CSS 👇 */}
           <div className="radar-box">
             <div className="radar-sweep"></div>
           </div>
@@ -604,81 +519,60 @@ function App() {
       );
     }
 
-    // 2. TELA DA SALA DE CARTAS (A página completa)
     const aero = gpsAeroportos[paginaCartas];
 
     return (
-      <div className="sala-cartas-container">
-        <div className="sala-cartas-content">
-          <h1 className="sala-cartas-titulo fade-in">
-            AEROBRIF <span>| SALA DE DESPACHO</span>
-          </h1>
-          <hr className="sala-cartas-linha" />
-
-          <div className="sala-cartas-header">
-            <h2 className="sala-cartas-icao">{paginaCartas}</h2>
-            <p className="sala-cartas-cidade fade-in">
-              {aero ? `${aero.nome} - ${aero.cidade}` : "Aeródromo Localizado"}
-            </p>
+      <div className="sala-cartas-container fade-in">
+        <div className="cartao-rotaer-claro">
+          {/* Cabeçalho Correto: SALA DE DESPACHO */}
+          <div className="cabecalho-rotaer">
+            <strong>AEROBRIF</strong> | SALA DE DESPACHO
           </div>
 
-          <div className="sala-cartas-box">
-            <h3 className="fade-in">⚠️ Repositório Oficial DECEA</h3>
-            <p className="fade-in">
+          {/* ICAO Dinâmico Gigante (Atenção: Aqui usa paginaCartas!) */}
+          <h1
+            className="titulo-icao-claro"
+            style={{
+              color: "#0284c7",
+              fontSize: "6rem",
+              fontWeight: "900",
+              margin: "10px 0",
+              textTransform: "uppercase",
+            }}
+          >
+            {paginaCartas}
+          </h1>
+
+          {/* Nome da Cidade */}
+          <p style={{ color: "#475569", fontSize: "16px", marginTop: "5px" }}>
+            {aero ? `${aero.nome} - ${aero.cidade}` : "Aeródromo Localizado"}
+          </p>
+
+          {/* Caixa de Aviso do DECEA (Cartas) */}
+          <div className="caixa-aviso-clara">
+            <strong
+              style={{
+                color: "#b45309",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              ⚠️ Repositório Oficial DECEA
+            </strong>
+            <p
+              style={{ fontSize: "14px", lineHeight: "1.6", margin: "15px 0" }}
+            >
               Por diretrizes de segurança aeronáutica, as cartas de procedimento
               (ADC, SID, STAR, IAC) devem ser consultadas diretamente na fonte
               oficial. Utilize o botão abaixo para abrir o pacote atualizado no
               AISWEB.
             </p>
 
-            <a
-              href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${paginaCartas}`}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-cartas btn-cartas-destaque fade-in"
-            >
+            {/* Botão de Cartas */}
+            <button className="botao-aisweb-claro">
               📚 BAIXAR PACOTE DE CARTAS ↗
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (paginaCartas) {
-    const aero = gpsAeroportos[paginaCartas];
-    return (
-      <div className="sala-cartas-container">
-        <div className="sala-cartas-content">
-          <h1 className="sala-cartas-titulo fade-in">
-            AEROBRIF <span>| SALA DE DESPACHO</span>
-          </h1>
-          <hr className="sala-cartas-linha" />
-
-          <div className="sala-cartas-header">
-            <h2 className="sala-cartas-icao">{paginaCartas}</h2>
-            <p className="sala-cartas-cidade">
-              {aero ? `${aero.nome} - ${aero.cidade}` : "Aeródromo Localizado"}
-            </p>
-          </div>
-
-          <div className="sala-cartas-box">
-            <h3 className="fade-in">⚠️ Repositório Oficial DECEA</h3>
-            <p className="fade-in">
-              Por diretrizes de segurança aeronáutica, as cartas de procedimento
-              (ADC, SID, STAR, IAC) devem ser consultadas diretamente na fonte
-              oficial. Utilize o botão abaixo para abrir o pacote atualizado no
-              AISWEB.
-            </p>
-
-            <a
-              href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${paginaCartas}`}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-cartas btn-cartas-destaque fade-in"
-            >
-              📚 BAIXAR PACOTE DE CARTAS ↗
-            </a>
+            </button>
           </div>
         </div>
       </div>
@@ -704,38 +598,45 @@ function App() {
     const aero = gpsAeroportos[paginaRotaer];
 
     return (
-      <div className="sala-cartas-container">
-        <div className="sala-cartas-content">
-          <h1 className="sala-cartas-titulo fade-in">
-            AEROBRIF <span>| ROTAER & SUPLEMENTOS</span>
-          </h1>
-          <hr className="sala-cartas-linha" />
-
-          <div className="sala-cartas-header">
-            <h2 className="sala-cartas-icao">{paginaRotaer}</h2>
-            <p className="sala-cartas-cidade fade-in">
-              {aero ? `${aero.nome} - ${aero.cidade}` : "Aeródromo Localizado"}
-            </p>
+      <div className="sala-cartas-container fade-in">
+        <div className="cartao-rotaer-claro">
+          <div className="cabecalho-rotaer">
+            <strong>AEROBRIF</strong> | ROTAER & SUPLEMENTOS
           </div>
 
-          <div className="sala-cartas-box">
-            <h3 className="fade-in" style={{ color: "#FFD700" }}>
+          {/* ICAO Dinâmico Gigante */}
+          {/* Substitua 'paginaRotaer' pela variável de estado que você usa nessa página */}
+          <h1 className="titulo-icao-claro">{paginaRotaer}</h1>
+
+          {/* Nome da Cidade */}
+          <p style={{ color: "#475569", fontSize: "16px", marginTop: "5px" }}>
+            {aero ? `${aero.nome} - ${aero.cidade}` : "Aeródromo Localizado"}
+          </p>
+
+          {/* Caixa de Aviso Clara (Amarelada) */}
+          <div className="caixa-aviso-clara">
+            <strong
+              style={{
+                color: "#b45309",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
               ⚠️ Acesso ao ROTAER
-            </h3>
-            <p className="fade-in">
+            </strong>
+            <p
+              style={{ fontSize: "14px", lineHeight: "1.6", margin: "15px 0" }}
+            >
               As informações de ROTAER (frequências, PCN de pista, restrições e
               combustíveis) devem ser consultadas no documento oficial
               atualizado. Clique abaixo para abrir.
             </p>
 
-            <a
-              href={`https://aisweb.decea.mil.br/?i=aerodromos&codigo=${paginaRotaer}`}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-cartas btn-cartas-destaque fade-in"
-            >
+            {/* Botão Escuro de Alto Contraste */}
+            <button className="botao-aisweb-claro">
               📖 ABRIR ROTAER NO AISWEB ↗
-            </a>
+            </button>
           </div>
         </div>
       </div>
@@ -819,18 +720,48 @@ function App() {
 
             return (
               <Marker
-                key={voo.id}
+                key={voo.keyReact}
                 position={[voo.lat, voo.lng]}
                 icon={iconeAviao}
               >
-                <Popup className="fonte-dados">
-                  <strong>{voo.id}</strong>
-                  <br />
-                  Altitude: {voo.altitude} ft
-                  <br />
-                  Velocidade: {voo.velocidade} kt
-                  <br />
-                  Proa: {voo.proa}°
+                <Popup>
+                  <div style={{ textAlign: "center", minWidth: "130px" }}>
+                    {/* O Callsign (Nome do Voo) em destaque com a cor ciano */}
+                    <strong
+                      style={{
+                        fontSize: "18px",
+                        color: "#0ea5e9",
+                        letterSpacing: "1px",
+                      }}
+                    >
+                      ✈️ {voo.id}
+                    </strong>
+
+                    <hr
+                      style={{
+                        borderColor: "rgba(255,255,255,0.15)",
+                        margin: "8px 0",
+                      }}
+                    />
+
+                    {/* Os dados com a nossa fonte de computador de voo */}
+                    <div style={{ textAlign: "left" }}>
+                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>
+                        ALT:
+                      </span>{" "}
+                      <span className="fonte-dados">{voo.altitude} ft</span>
+                      <br />
+                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>
+                        VEL:
+                      </span>{" "}
+                      <span className="fonte-dados">{voo.velocidade} kt</span>
+                      <br />
+                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>
+                        PROA:
+                      </span>{" "}
+                      <span className="fonte-dados">{voo.proa}°</span>
+                    </div>
+                  </div>
                 </Popup>
               </Marker>
             );
@@ -846,7 +777,7 @@ function App() {
         {/* 1. LOGO ESTILIZADA */}
         <div className="logo-container">
           <span className="logo-aero">AERO</span>
-          <span className="logo-brif">BRIF</span>
+          <span className="logo-brif">BRIEF</span>
         </div>
 
         <div

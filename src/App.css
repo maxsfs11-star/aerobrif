@@ -3,6 +3,11 @@
 
 /* ... (resto do seu CSS, como o .painel-vidro, fica aqui embaixo) ... */
 
+body {
+  /* Um cinza claro/metálico que não ofusca a visão */
+  background: linear-gradient(135deg, #22262c 0%, #142841 100%);
+  color: #0f172a;
+}
 :root {
   --cyan-neon: #00d2ff;
   --bg-panel: rgba(20, 25, 35, 0.85);
@@ -440,17 +445,14 @@
    TELA: SALA DE CARTAS (Briefing Room)
    ========================================= */
 
-/* O fundo escuro da tela inteira, com um leve brilho no centro */
 .sala-cartas-container {
-  background-color: #050508;
-  background-image: radial-gradient(circle at 50% 20%, #1a1a2e 0%, #050508 70%);
-  min-height: 100vh;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px 20px;
-  color: white;
-  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  justify-content: center; /* Centraliza na horizontal */
+  align-items: center; /* Centraliza na vertical */
+  min-height: 100vh; /* Garante que o container ocupa a tela inteira */
+
+  /* Aproveitando: se quiser que o fundo fique claro também nesta tela, aplique aqui! */
+  background-color: #cbd5e1;
 }
 
 /* O cartão principal com efeito de vidro (Glassmorphism) */
@@ -820,8 +822,8 @@
 }
 
 .logo-brif {
-  font-weight: 400;
-  font-style: italic; /* 👈 O itálico que você pediu! */
+  font-weight: 900;
+
   color: var(--cyan-neon);
   /* 👇 Chama a animação do brilho pulsante */
   animation: pulso-neon 2s ease-in-out infinite alternate;
@@ -933,4 +935,113 @@
 .luz-offline {
   color: #f87171; /* Vermelho alerta */
   margin-right: 6px;
+}
+
+/* 🎈 ESTILIZAÇÃO DO BALÃO DO RADAR (POPUP LEAFLET) */
+
+/* O corpo principal do balão */
+.leaflet-popup-content-wrapper {
+  background: rgba(
+    15,
+    23,
+    42,
+    0.9
+  ) !important; /* Fundo escuro do nosso painel */
+  backdrop-filter: blur(8px) !important; /* Efeito vidro translúcido */
+  color: #ffffff !important; /* Força todo o texto a ficar BRANCO */
+  border: 1px solid #0ea5e9 !important; /* Borda de destaque Ciano */
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* O triângulo (ponta) embaixo do balão */
+.leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.9) !important; /* Mesma cor escurecida */
+  border: 1px solid #0ea5e9 !important; /* Mesma borda ciano */
+  /* Removemos as bordas de cima e da esquerda para o triângulo não ficar com linha no meio */
+  border-top: none !important;
+  border-left: none !important;
+}
+
+/* O conteúdo interno para dar um respiro */
+.leaflet-popup-content {
+  margin: 14px 18px !important;
+  line-height: 1.6 !important;
+  font-size: 14px !important;
+}
+
+/* O botão de fechar (X) */
+.leaflet-popup-close-button {
+  color: #94a3b8 !important; /* Cinza claro */
+}
+.leaflet-popup-close-button:hover {
+  color: #ffffff !important; /* Fica branco puro ao passar o mouse */
+}
+
+/* 🌤️ TEMA COCKPIT DIURNO (Day Mode) */
+
+/* O fundo do cartão principal */
+.cartao-rotaer-claro {
+  /* 👇 Removemos as regras de posicionamento daqui! */
+  width: 95%;
+  max-width: 850px;
+  padding: 50px;
+  background: rgba(203, 213, 225, 0.92);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+  color: #0f172a;
+}
+
+/* 🔡 ESCALANDO OS TEXTOS INTERNOS */
+.titulo-icao-claro {
+  font-size: 6.5rem !important; /* SBSP fica gigante e imponente */
+  margin-bottom: 10px;
+  letter-spacing: 2px;
+}
+
+.cabecalho-rotaer {
+  font-size: 16px; /* Aumentamos a legibilidade do topo */
+  margin-bottom: 30px;
+}
+
+/* Caixa de Aviso (Amarela clara) */
+.caixa-aviso-clara {
+  background: rgba(245, 158, 11, 0.08); /* Fundo amarelado transparente */
+  border-left: 4px solid #f59e0b; /* Linha de alerta laranja/amarela */
+  border-radius: 0 8px 8px 0;
+  padding: 16px;
+  margin-top: 20px;
+  color: #334155; /* Texto descritivo escuro */
+}
+
+/* Botão de Ação */
+.botao-aisweb-claro {
+  background: #0f172a; /* O botão fica super escuro para dar um contraste matador na tela clara */
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 14px 20px;
+  width: 100%;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: all 0.2s ease-in-out;
+}
+
+.botao-aisweb-claro:hover {
+  background: #0284c7; /* Fica azul ao passar o mouse */
+  transform: translateY(-2px); /* Dá uma leve levantada */
+}
+
+.titulo-icao-claro {
+  color: #0284c7 !important; /* Azul Aeronáutico forte */
+  font-size: 6.5rem !important; /* Tamanho Widebody */
+  font-weight: 900 !important;
+  line-height: 1;
+  margin: 0 0 10px 0;
+  text-transform: uppercase;
+  text-shadow: 1px 2px 3px rgba(2, 132, 199, 0.2);
 }
