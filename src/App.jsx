@@ -467,22 +467,20 @@ function App() {
       );
   }, [origemAtiva, destinoAtivo, origemClima, destinoClima]);
 
-  // ✈️ RADAR GLOBAL ONLINE (Voo Rasante - Anti-Spam Ativado)
-  // ✈️ RADAR GLOBAL ONLINE (Via Servidor AeroBrif VIP)
+  // ✈️ RADAR GLOBAL 100% REAL (Via Servidor VIP AeroBrif)
   useEffect(() => {
     const bRadar = async () => {
       try {
-        // 👇 Voltamos a apontar para o seu servidor no Render! 👇
+        // Ligando para a sua torre no Render, que tem a senha da OpenSky
         const res = await fetch(
           "https://aerobrif.onrender.com/api/radar-global",
         );
 
-        // Se a resposta não for JSON, intercepta o erro
         if (!res.ok) throw new Error("Falha na comunicação com o servidor.");
 
         const data = await res.json();
 
-        if (data && data.states) {
+        if (data && data.states && data.states.length > 0) {
           const frotaGlobal = data.states
             .filter((voo) => voo[5] && voo[6])
             .slice(0, 400)
@@ -497,15 +495,22 @@ function App() {
 
           setRadar(frotaGlobal);
           setIsServerOnline(true);
+        } else {
+          // Se a lista vier vazia, significa que o castigo da OpenSky ainda está ativo.
+          console.log(
+            "Radar Real: Sem aeronaves no momento ou aguardando liberação de IP.",
+          );
         }
       } catch (err) {
-        console.log("Radar VIP em espera:", err.message);
+        console.log("Radar Real em espera:", err.message);
       }
     };
 
     bRadar();
-    // Com a conta VIP, podemos buscar a cada 30 ou 45 segundos tranquilamente.
-    const timer = setInterval(bRadar, 30000);
+
+    // ⏱️ AQUI ESTÁ O SEGREDO: 60.000 milissegundos (1 Minuto).
+    // Atualizar a cada minuto mantém a OpenSky feliz e evita o bloqueio!
+    const timer = setInterval(bRadar, 60000);
     return () => clearInterval(timer);
   }, []);
 
