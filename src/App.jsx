@@ -467,27 +467,33 @@ function App() {
       );
   }, [origemAtiva, destinoAtivo, origemClima, destinoClima]);
 
-  // ✈️ RADAR GLOBAL ONLINE (Voo Rasante - Bypass CORS)
+  // ✈️ RADAR GLOBAL ONLINE (Voo Rasante - Anti-Spam Ativado)
   useEffect(() => {
     const bRadar = async () => {
       try {
-        // 1. A URL real do radar (América do Sul)
         const urlOpenSky =
           "https://opensky-network.org/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30";
-
-        // 2. O Túnel Camuflado (Proxy AllOrigins) que burla o bloqueio
         const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlOpenSky)}`;
 
-        // 3. O React pede os dados pelo túnel
         const res = await fetch(proxyUrl);
 
-        if (!res.ok) throw new Error();
-        const data = await res.json();
+        // 🛡️ Lemos a resposta como texto puro primeiro para verificar se fomos bloqueados
+        const textoResposta = await res.text();
+
+        // Se o servidor mandou a mensagem de castigo, a gente aborta sem quebrar o código
+        if (textoResposta.includes("Too many requests")) {
+          throw new Error(
+            "Limite de requisições atingido. Aguardando liberação da antena.",
+          );
+        }
+
+        // Se passou pela segurança, aí sim convertemos para JSON
+        const data = JSON.parse(textoResposta);
 
         if (data && data.states) {
           const frotaGlobal = data.states
             .filter((voo) => voo[5] && voo[6])
-            .slice(0, 400) // Mantém a proteção de 400 aviões
+            .slice(0, 400)
             .map((voo) => ({
               id: voo[1] ? voo[1].trim() : voo[0],
               lng: voo[5],
@@ -501,13 +507,16 @@ function App() {
           setIsServerOnline(true);
         }
       } catch (err) {
-        console.log("Radar OpenSky indisponível no momento.", err);
-        setIsServerOnline(false);
+        // Agora o erro fica limpo no console, sem telas vermelhas assustadoras
+        console.log("Radar em modo de espera:", err.message);
       }
     };
 
     bRadar();
-    const timer = setInterval(bRadar, 30000);
+
+    // ⏱️ AUMENTAMOS O TEMPO PARA 60 SEGUNDOS (60000 ms)
+    // Isso evita que a OpenSky bloqueie o aplicativo dos seus usuários
+    const timer = setInterval(bRadar, 60000);
     return () => clearInterval(timer);
   }, []);
 
