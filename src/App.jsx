@@ -474,7 +474,7 @@ function App() {
         // Antena apontada para a América do Sul inteira (Latitude/Longitude bounding box)
         // Isso pega do topo do Brasil até a Argentina.
         const res = await fetch(
-          "https://opensky-network.org/api/states/all?lamin=-35&lomin=-75&lamax=10&lomax=-30",
+          "https://aerobrif.onrender.com/api/radar-global",
         );
 
         if (!res.ok) throw new Error();
